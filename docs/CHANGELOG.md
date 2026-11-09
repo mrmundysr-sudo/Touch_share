@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- Added visual/TouchShare_needs.json (7 pages, 48 files, 22 regions) for the App Visual Builder template workflow (D-010).
+- Added visual/TouchShare_needs.json (6 pages, 10 files, 13 regions) for the App Visual Builder template workflow (D-010). Verified it loads in the builder's real NeedsParser with no errors or warnings.
 - Recorded D-009 (remote share beta without relay) and added roadmap item 0.5. Plan only; no server work started.
 - Added docs/MARKET_RESEARCH.md, decision D-008, roadmap item for LocalSend protocol evaluation.
 - Owner confirmed v0.1 APK works on device (via Touch Developer app).
