@@ -49,5 +49,21 @@ document.getElementById('b').onclick=function(){
 };
 </script>""")
 
+    fun waitingPage(token: String): String = shell("Touch Share", """<h1>Waiting for approval</h1>
+<p id="m">The other phone needs to tap <b>Allow</b> for this device.</p>
+<script>
+var T=${jsString(token)};
+function poll(){
+ var x=new XMLHttpRequest();x.open('GET','/status?t='+encodeURIComponent(T));
+ x.onload=function(){
+  if(x.status==403){document.getElementById('m').textContent='The other phone declined this device.';return}
+  if(x.status==200){try{var s=JSON.parse(x.responseText).state;if(s==='allowed'){location.replace('/?t='+encodeURIComponent(T));return}}catch(e){}}
+  setTimeout(poll,1500)};
+ x.onerror=function(){setTimeout(poll,3000)};
+ x.send();
+}
+poll();
+</script>""")
+
     private fun jsString(s: String) = "\"" + s.filter { it.isLetterOrDigit() } + "\""
 }

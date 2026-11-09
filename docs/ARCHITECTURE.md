@@ -25,8 +25,19 @@ Two Gradle modules so the logic is testable without an emulator.
 - Traffic is plain HTTP on the local network (see DECISIONS D-004). Use only on a hotspot or network you trust.
 - Uploaded names are sanitized; temp upload files are deleted after saving.
 
-## Known limits in v0.1
-- Server dies if Android kills the app in the background (no foreground service yet).
+## 0.2 additions
+- `DeviceRegistry` (core): PENDING/ALLOWED/DENIED per device cookie; cap of 5 waiting; denied IPs blocked.
+- `ShareServer` gate: after the token check, every request needs an allowed device. Pending devices get a polling "waiting" page and `/status`; allowed devices proceed; denied get 403.
+- `ShareService` (app): foreground service owning the server, wake lock, notifications (session + approval with Allow/Deny).
+- `SessionHolder` (app): in-process state (url, mode, log, pending devices) that the screen renders.
+
+## Known limits
+- Approval is on by default with no toggle; still plain HTTP (HTTPS planned 0.4).
+- Android 15 limits dataSync foreground services to about 6 hours; not handled yet.
+- No idle auto-stop yet (wake lock has a 2-hour safety cap).
+
+## Original limits in v0.1
+- (Fixed in 0.2) Server used to die in the background.
 - Uploads are buffered to a temp file first (needs free cache space equal to the file).
 - No resume, no HTTP Range, no zip-all, no folders.
 - Browser uploads send one file per request (NanoHTTPD keeps one file per field name).

@@ -16,10 +16,11 @@ class ShareServer(
     private val source: FileSource? = null,
     private val sink: FileSink? = null,
     port: Int = 0,
+    private val registry: DeviceRegistry? = null,
     private val onEvent: (ShareEvent) -> Unit = {},
 ) : NanoHTTPD(port) {
 
-    private fun reply(status: Status, mime: String, body: String) =
+    private fun reply(status: Response.IStatus, mime: String, body: String) =
         newFixedLengthResponse(status, mime, body).also { harden(it) }
 
     private fun harden(r: Response) {
@@ -35,6 +36,30 @@ class ShareServer(
             return reply(Status.FORBIDDEN, "text/plain", "Forbidden")
         }
         val path = session.uri
+        var newCookie: String? = null
+        if (registry != null) {
+            val ip = session.remoteIpAddress ?: ""
+            if (registry.isIpDenied(ip)) {
+                onEvent(ShareEvent.Rejected("denied device"))
+                return reply(Status.FORBIDDEN, "text/plain", "Denied")
+            }
+            var id = cookieValue(session.headers["cookie"], COOKIE)
+            var state = id?.let { registry.state(it) }
+            if (state == null) {
+                val d = registry.register(ip, session.headers["user-agent"] ?: "")
+                    ?: return reply(TooMany, "text/plain", "Too many waiting devices. Try again shortly.")
+                id = d.id; state = DeviceState.PENDING; newCookie = d.id
+            }
+            when (state) {
+                DeviceState.DENIED -> return reply(Status.FORBIDDEN, "text/plain", "Denied")
+                DeviceState.PENDING -> {
+                    val r = if (path == "/status") reply(Status.OK, "application/json", "{\"state\":\"pending\"}")
+                    else reply(Status.OK, "text/html; charset=utf-8", Pages.waitingPage(token))
+                    return withCookie(r, newCookie)
+                }
+                DeviceState.ALLOWED -> if (path == "/status") return reply(Status.OK, "application/json", "{\"state\":\"allowed\"}")
+            }
+        }
         return try {
             when {
                 session.method == Method.GET && path == "/" ->
@@ -51,6 +76,15 @@ class ShareServer(
             reply(Status.INTERNAL_ERROR, "text/plain", "Error")
         }
     }
+
+    private fun withCookie(r: Response, id: String?): Response {
+        if (id != null) r.addHeader("Set-Cookie", "$COOKIE=$id; Path=/; HttpOnly; SameSite=Lax")
+        return r
+    }
+
+    private fun cookieValue(header: String?, name: String): String? =
+        header?.split(';')?.map { it.trim() }?.firstOrNull { it.startsWith("$name=") }
+            ?.substringAfter('=')?.takeIf { it.length in 8..64 && it.all { c -> c.isLetterOrDigit() } }
 
     private fun download(id: String): Response {
         val f = source!!.list().firstOrNull { it.id == id }
@@ -96,6 +130,14 @@ class ShareServer(
             reply(Status.INTERNAL_ERROR, "text/plain", "Save failed")
         } finally {
             tmp.delete()
+        }
+    }
+
+    private companion object {
+        const val COOKIE = "ts_dev"
+        val TooMany = object : Response.IStatus {
+            override fun getRequestStatus() = 429
+            override fun getDescription() = "429 Too Many Requests"
         }
     }
 }

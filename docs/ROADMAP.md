@@ -5,9 +5,11 @@ Status key: **Done** / **Next** / **Planned** / **Idea**. Update this file whene
 | Ver | Item | Status | Notes |
 |---|---|---|---|
 | 0.1 | Hotspot/LAN web server, QR, one-time token, Send + Receive, MediaStore saves | **Done (needs device test)** | This scaffold. |
-| 0.2 | Foreground service + notification so transfers survive backgrounding | **Next** | Required for large files; needs `FOREGROUND_SERVICE_DATA_SYNC` (API 34). |
-| 0.2 | Per-transfer accept prompt on the host (tap to allow a new device) | **Next** | Closes the gap where anyone with the link can transfer. |
-| 0.2 | Device-test checklist and fixes (hotspot IP, picker, large files) | **Next** | Record results in CHANGELOG. |
+| 0.2 | Foreground service + notification so transfers survive backgrounding | **Done (needs device test)** | Service owns the server; Stop button in the notification; 2-hour wake-lock cap. Android 15's 6-hour data-sync limit not yet handled. |
+| 0.2 | Per-device accept prompt on the host (tap to allow a new device) | **Done (needs device test)** | In-app dialog, or notification with Allow/Deny when the app is not on screen. Denied IPs stay blocked for the session. |
+| 0.2 | Device-test checklist and fixes (hotspot IP, picker, large files, background transfer, approval prompt) | **Next** | Record results in CHANGELOG. |
+| 0.3 | Visual theme from App Visual Builder export (6 pages, see D-010); importer + slot loader | Planned | Waiting on owner's exported zip. |
+| 0.3 | Auto-stop after idle, handle Android 15 foreground-service timeout, settings toggle for approval | Planned | |
 | 0.3 | HTTP Range + resume, "download all as zip", streaming upload (no temp copy) | Planned | |
 | 0.3 | Transfer history screen, choose save folder (SAF) | Planned | |
 | 0.4 | HTTPS with per-session self-signed cert (cert pinning via QR fingerprint) | Planned | Browser warning is the UX cost; see D-004. |
