@@ -15,6 +15,7 @@ Status key: **Done** / **Next** / **Planned** / **Idea**. Update this file whene
 | 1.1 | **Wi-Fi Direct** transport | Idea | May be redundant with Nearby; evaluate after 1.0. |
 | 1.2 | **Bluetooth (RFCOMM/BLE) fallback** | Idea | Slow; only for no-Wi-Fi situations. |
 | later | Folder send, clipboard/text share, nicer UI/Compose, localization, Play Store release | Idea | |
+| 1.0 | Evaluate LocalSend open-protocol compatibility vs Nearby Connections (licence + feasibility) | Planned | See MARKET_RESEARCH.md, D-008. |
 | later | Check Touch-Modules registry for reusable components | **Open** | See DECISIONS D-005. |
 
 ## Principles

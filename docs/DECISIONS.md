@@ -11,3 +11,4 @@
 | D-005 | Touch-Modules registry was not accessible from this session, so no studio component was reused. Owner to grant access or confirm none applies before 0.2. | Open | 2026-11-09 |
 | D-006 | Libraries: NanoHTTPD 2.3.1 (BSD-3), ZXing core 3.5.3 (Apache-2.0). Both permissive. | Proposed | 2026-11-09 |
 | D-007 | Received files saved to `Download/TouchShare` via MediaStore; no storage permission requested. | Proposed | 2026-11-09 |
+| D-008 | Market research done (docs/MARKET_RESEARCH.md). Differentiator to build on: browser-only receiver, no ads/accounts. Evaluate LocalSend protocol compatibility before choosing the 1.0 transport. | Proposed | 2026-11-09 |
