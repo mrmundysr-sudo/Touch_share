@@ -11,6 +11,7 @@ Status key: **Done** / **Next** / **Planned** / **Idea**. Update this file whene
 | 0.3 | HTTP Range + resume, "download all as zip", streaming upload (no temp copy) | Planned | |
 | 0.3 | Transfer history screen, choose save folder (SAF) | Planned | |
 | 0.4 | HTTPS with per-session self-signed cert (cert pinning via QR fingerprint) | Planned | Browser warning is the UX cost; see D-004. |
+| 0.5 | **Remote share (beta, no relay)**: WebRTC data channel + STUN + minimal signaling; browser receiver kept; honest labelling, timeout error, fallback to local QR | Planned | D-009. Test on real networks first and record success rates; add privacy policy; short-lived codes + rate limits. No TURN unless re-approved. |
 | 1.0 | **Nearby Connections (Google Play Services)**: app-to-app, BLE discovery, auto Wi-Fi/Bluetooth upgrade | Planned | Android only. Biggest UX win, no hotspot setup. |
 | 1.1 | **Wi-Fi Direct** transport | Idea | May be redundant with Nearby; evaluate after 1.0. |
 | 1.2 | **Bluetooth (RFCOMM/BLE) fallback** | Idea | Slow; only for no-Wi-Fi situations. |

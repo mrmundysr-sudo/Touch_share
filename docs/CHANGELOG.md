@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Recorded D-009 (remote share beta without relay) and added roadmap item 0.5. Plan only; no server work started.
 - Added docs/MARKET_RESEARCH.md, decision D-008, roadmap item for LocalSend protocol evaluation.
 - Owner confirmed v0.1 APK works on device (via Touch Developer app).
 
