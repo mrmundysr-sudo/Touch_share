@@ -14,6 +14,9 @@ object Art {
     const val SENDING = "page_02"
     const val RECEIVING = "page_03"
     const val ALLOW_DEVICE = "page_04"
+    const val ANYWHERE_SEND = "anywhere_send"           // Anywhere screen, sending look
+    const val ANYWHERE_RECEIVE = "anywhere_receive"     // Anywhere screen, receiving look (same layout)
+    const val ANYWHERE_QR = "anywhere_qr"               // full-screen QR overlay
 
     data class Region(val x: Float, val y: Float, val w: Float, val h: Float)
     class Page(val id: String, val bitmap: Bitmap, private val regions: Map<String, Region>) {

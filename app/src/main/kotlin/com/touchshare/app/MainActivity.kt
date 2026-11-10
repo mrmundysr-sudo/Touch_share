@@ -220,13 +220,13 @@ class MainActivity : Activity() {
         val active = SessionHolder.active
         val remote = active && SessionHolder.remote
         val screen = if (active && !remote) (if (SessionHolder.mode == Mode.SEND) sending else receiving) else null
-        val target: View = if (remote) anywhere.view else screen?.layout ?: home
+        val target: View = if (remote) anywhere.view(SessionHolder.mode) else screen?.layout ?: home
         if (current !== target) { container.removeAllViews(); container.addView(target); current = target }
 
         val url = SessionHolder.url
         container.removeCallbacks(tick)
         if (remote) {
-            if (anywhere.update()) container.postDelayed(tick, 15_000)      // keep the countdown fresh while waiting
+            if (anywhere.update()) container.postDelayed(tick, 1_000)      // tick the countdown while waiting
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else if (screen != null && url != null) {
             if (qrFor != url) { qrBitmap = Qr.bitmap(url); qrFor = url }

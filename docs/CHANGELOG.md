@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0-anywhere3 (branch `claude/touch-share-remote`)
+- Anywhere screen now uses the owner's artwork (D-026): separate Send and Receive looks sharing one layout, invisible buttons over Share transmission / Show QR / Copy transmission / Stop transmission, live text in the code and website box (code large, website below), the countdown box (m:ss, then "Connected"), and the status box (two latest lines). Countdown ticks every second while waiting.
+- QR overlay now uses the owner's full-screen art: real QR on the plain white square, code and website as live text in the painted bars; tap the code or website to copy it, tap anywhere else to close; full brightness.
+- `tools/prepare_art.py` takes several exports and merges by page name; the Anywhere regions are mapped by position (see D-026).
+- Chooser pop-up remains plain (no art yet). Not yet compiled or run on a phone.
+
 ## 0.5.0-anywhere2 (branch `claude/touch-share-remote`)
 - Anywhere screen rebuilt from plain native controls (D-025) so every needed element is visible for the artwork: title, three steps, **Share link** (Android share sheet, friendly pre-filled message), **Show QR** (full-screen overlay: real QR on plain white, code, website, full brightness, tap to close), **Copy link**, code with website name for reading aloud, status lines, a "link works for about N more minutes" countdown until someone connects, and **Stop**.
 - Chooser: "Anywhere server address..." removed; long-press "Anywhere (beta)" to change the address (testing only).
