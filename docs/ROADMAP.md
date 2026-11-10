@@ -19,6 +19,7 @@ Status key: **Done** / **Next** / **Planned** / **Idea**. Update this file whene
 | 1.1 | **Wi-Fi Direct** transport | Idea | May be redundant with Nearby; evaluate after 1.0. |
 | 1.2 | **Bluetooth (RFCOMM/BLE) fallback** | Idea | Slow; only for no-Wi-Fi situations. |
 | Idea | Startup splash screen (brief, tap to skip) with a "How to use" button leading to a themed help screen with live, editable text; also reachable later from the chooser. Owner is thinking about it. | Idea | Not decided yet. |
+| Idea | **iPhone version** on branch `claude/touch-share-ios`: same art and screens, Swift port of core, WKWebView Anywhere host. See docs/IOS_PLAN.md for what cannot match Android (no background server, storage location, signing). | Planned | Needs owner decisions on distribution. |
 | later | Folder send, clipboard/text share, nicer UI/Compose, localization, Play Store release | Idea | |
 | 1.0 | Evaluate LocalSend open-protocol compatibility vs Nearby Connections (licence + feasibility) | Planned | See MARKET_RESEARCH.md, D-008. |
 | later | Check Touch-Modules registry for reusable components | **Open** | See DECISIONS D-005. |

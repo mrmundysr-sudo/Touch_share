@@ -1,5 +1,8 @@
 # Changelog
 
+## iOS branch (`claude/touch-share-ios`)
+- Branch created from the Android 0.5.0-anywhere3 state; added docs/IOS_PLAN.md (parity table, unavoidable differences, build and install options, slices, risks, open decisions). No iOS code yet.
+
 ## 0.5.0-anywhere3 (branch `claude/touch-share-remote`)
 - Anywhere screen now uses the owner's artwork (D-026): separate Send and Receive looks sharing one layout, invisible buttons over Share transmission / Show QR / Copy transmission / Stop transmission, live text in the code and website box (code large, website below), the countdown box (m:ss, then "Connected"), and the status box (two latest lines). Countdown ticks every second while waiting.
 - QR overlay now uses the owner's full-screen art: real QR on the plain white square, code and website as live text in the painted bars; tap the code or website to copy it, tap anywhere else to close; full brightness.
