@@ -2,63 +2,105 @@ package com.touchshare.app
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlertDialog
+import android.app.Dialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.RippleDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.view.Window
 import android.view.WindowManager
-import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import com.touchshare.core.Device
 import com.touchshare.core.Mode
 
 class MainActivity : Activity() {
-    private lateinit var qr: ImageView
-    private lateinit var urlText: TextView
-    private lateinit var status: TextView
-    private lateinit var sendBtn: Button
-    private lateinit var receiveBtn: Button
-    private lateinit var stopBtn: Button
+    private class SessionScreen(val layout: ArtLayout, val qr: ImageView, val link: TextView, val line: TextView)
+
+    private lateinit var container: FrameLayout
+    private lateinit var home: ArtLayout
+    private lateinit var sending: SessionScreen
+    private lateinit var receiving: SessionScreen
+    private var current: View? = null
     private var qrFor: String? = null
     private var qrBitmap: Bitmap? = null
-    private var dialog: AlertDialog? = null
+    private var dialog: Dialog? = null
     private var dialogFor: String? = null
+    private var lastError: String? = null
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
-        val pad = (16 * resources.displayMetrics.density).toInt()
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(pad, pad, pad, pad)
-            setBackgroundColor(Color.parseColor("#12151c")); gravity = Gravity.CENTER_HORIZONTAL
+        window.setBackgroundDrawable(ColorDrawable(0xFF05080A.toInt()))
+        window.statusBarColor = Color.BLACK
+        window.navigationBarColor = Color.BLACK
+
+        val homeArt = Art.page(this, Art.HOME)
+        home = ArtLayout(this, homeArt.bitmap).apply {
+            region(tapArea { pickFiles() }, homeArt.region("send_button"))
+            region(tapArea { startSession(Mode.RECEIVE, null) }, homeArt.region("receive_button"))
         }
-        fun tv(text: String, size: Float = 16f) = TextView(this).apply {
-            this.text = text; textSize = size; setTextColor(Color.parseColor("#e8ecf4"))
-        }
-        root.addView(tv("Touch Share", 26f))
-        root.addView(tv("Connect both phones to the same hotspot or Wi-Fi, then share. The other phone just scans the QR code in its browser. You approve each new device.", 14f))
-        sendBtn = Button(this).apply { text = "Send files"; setOnClickListener { pickFiles() } }
-        receiveBtn = Button(this).apply { text = "Receive files"; setOnClickListener { startSession(Mode.RECEIVE, null) } }
-        stopBtn = Button(this).apply { text = "Stop sharing"; visibility = View.GONE; setOnClickListener { stopSession() } }
-        qr = ImageView(this).apply {
-            visibility = View.GONE; setBackgroundColor(Color.WHITE); setPadding(pad, pad, pad, pad)
-            layoutParams = LinearLayout.LayoutParams(640, 640)
-        }
-        urlText = tv("", 13f).apply { setTextIsSelectable(true) }
-        status = tv("", 14f)
-        listOf(sendBtn, receiveBtn, qr, urlText, stopBtn, status).forEach { root.addView(it) }
-        setContentView(ScrollView(this).apply { setBackgroundColor(Color.parseColor("#12151c")); addView(root) })
+        sending = sessionScreen(Art.SENDING)
+        receiving = sessionScreen(Art.RECEIVING)
+
+        container = FrameLayout(this).apply { setBackgroundColor(0xFF05080A.toInt()) }
+        setContentView(container, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2) // optional: needed only for background prompts
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2) // optional: only needed for background prompts
         }
+    }
+
+    /** A see-through button laid over painted artwork, with a light ripple when pressed. */
+    private fun tapArea(onClick: () -> Unit): View = View(this).apply {
+        isClickable = true
+        background = RippleDrawable(ColorStateList.valueOf(0x55FFFFFF), null, ColorDrawable(Color.WHITE))
+        setOnClickListener { onClick() }
+    }
+
+    private fun textIn(sizeFactor: Float, color: Int = 0xFFD8FFD2.toInt()) = TextView(this).apply {
+        setTextColor(color); gravity = Gravity.CENTER; setSingleLine(true)
+        ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
+        tag = sizeFactor
+    }
+
+    private fun sized(v: View, @Suppress("UNUSED_PARAMETER") w: Int, h: Int) {
+        val t = v as TextView
+        t.setTextSize(TypedValue.COMPLEX_UNIT_PX, h * (t.tag as Float))
+    }
+
+    private fun sessionScreen(pageId: String): SessionScreen {
+        val art = Art.page(this, pageId)
+        val qr = ImageView(this).apply { scaleType = ImageView.ScaleType.FIT_CENTER; setBackgroundColor(Color.WHITE) }
+        val link = textIn(0.5f).apply { setOnClickListener { copyLink() } }
+        val line = textIn(0.5f)
+        val layout = ArtLayout(this, art.bitmap).apply {
+            region(qr, art.region("qr_square"))
+            region(link, art.region("link_area"), ::sized)
+            region(line, art.region("file_list"), ::sized)
+            region(tapArea { stopSession() }, art.region("stop_button"))
+        }
+        return SessionScreen(layout, qr, link, line)
+    }
+
+    private fun copyLink() {
+        val url = SessionHolder.url ?: return
+        (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Touch Share link", url))
+        Toast.makeText(this, "Link copied", Toast.LENGTH_SHORT).show()
     }
 
     override fun onStart() {
@@ -107,25 +149,32 @@ class MainActivity : Activity() {
 
     private fun render() {
         val active = SessionHolder.active
-        sendBtn.isEnabled = !active; receiveBtn.isEnabled = !active
-        stopBtn.visibility = if (active) View.VISIBLE else View.GONE
+        val screen = if (active) (if (SessionHolder.mode == Mode.SEND) sending else receiving) else null
+        val target: View = screen?.layout ?: home
+        if (current !== target) { container.removeAllViews(); container.addView(target); current = target }
+
         val url = SessionHolder.url
-        if (active && url != null) {
+        if (screen != null && url != null) {
             if (qrFor != url) { qrBitmap = Qr.bitmap(url); qrFor = url }
-            qr.setImageBitmap(qrBitmap); qr.visibility = View.VISIBLE; urlText.text = url
+            screen.qr.setImageBitmap(qrBitmap)
+            screen.link.text = url
+            screen.line.text = SessionHolder.logLines().firstOrNull() ?: "Waiting for the other phone…"
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
-            qr.visibility = View.GONE; urlText.text = ""; qrFor = null; qrBitmap = null
+            qrFor = null; qrBitmap = null
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
-        val head = when {
-            SessionHolder.error != null -> SessionHolder.error!!
-            active && SessionHolder.mode == Mode.SEND -> "Sharing. Scan the code on the other phone, then tap Allow here."
-            active -> "Ready to receive (saved to Downloads/TouchShare). Scan the code on the other phone, then tap Allow here."
-            else -> ""
-        }
-        status.text = (listOf(head) + SessionHolder.logLines()).filter { it.isNotEmpty() }.joinToString("\n")
+
+        val err = SessionHolder.error
+        if (err != null && err != lastError) Toast.makeText(this, err, Toast.LENGTH_LONG).show()
+        lastError = err
+
         showApprovalPrompt(SessionHolder.pendingDevices().firstOrNull())
+    }
+
+    private fun browserName(ua: String): String {
+        val m = Regex("\\(([^)]*)\\)").find(ua)?.groupValues?.get(1)
+        return (m ?: ua).ifBlank { "Unknown browser" }.take(60)
     }
 
     private fun showApprovalPrompt(d: Device?) {
@@ -133,13 +182,22 @@ class MainActivity : Activity() {
         if (dialogFor == d.id) return
         dialog?.dismiss()
         dialogFor = d.id
-        dialog = AlertDialog.Builder(this)
-            .setTitle("Allow this device?")
-            .setMessage("${d.ip} wants to connect.\n${d.userAgent.ifEmpty { "Unknown browser" }}\n\nOnly allow a phone or computer you recognise.")
-            .setCancelable(false)
-            .setPositiveButton("Allow") { _, _ -> SessionHolder.registry?.allow(d.id) }
-            .setNegativeButton("Deny") { _, _ -> SessionHolder.registry?.deny(d.id) }
-            .show()
+
+        val art = Art.page(this, Art.ALLOW_DEVICE)
+        val message = textIn(0.1f, Color.WHITE).apply { setSingleLine(false); maxLines = 6; ellipsize = null }
+        message.text = "Device at ${d.ip}\n${browserName(d.userAgent)}\n\nOnly allow a phone or computer you recognise."
+        val dlg = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
+        val layout = ArtLayout(this, art.bitmap, scaleFactor = 0.94f, backdrop = Color.TRANSPARENT).apply {
+            region(message, art.region("message_area"), ::sized)
+            region(tapArea { SessionHolder.registry?.allow(d.id); dlg.dismiss() }, art.region("allow_button"))
+            region(tapArea { SessionHolder.registry?.deny(d.id); dlg.dismiss() }, art.region("deny_button"))
+        }
+        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dlg.setContentView(layout, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        dlg.setCancelable(false)
+        dlg.window?.apply { addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND); setDimAmount(0.75f) }
+        dialog = dlg
+        dlg.show()
     }
 
     override fun onDestroy() { dialog?.dismiss(); super.onDestroy() }

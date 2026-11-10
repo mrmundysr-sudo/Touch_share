@@ -54,6 +54,7 @@ class ShareService : Service() {
             source = uris?.let { UriSource(applicationContext.contentResolver, it) },
             sink = if (mode == Mode.RECEIVE) DownloadsSink(applicationContext) else null,
             registry = registry,
+            assets = AppAssets(applicationContext),
             onEvent = { e -> SessionHolder.addLog(describe(e)) },
         )
         try { s.start() } catch (e: Exception) {
@@ -180,5 +181,14 @@ class ShareService : Service() {
         private const val CH_APPROVAL = "approval"
         private const val NOTIF_SESSION = 1
         private const val NOTIF_APPROVAL_BASE = 1000
+    }
+}
+
+/** Lets the web pages fetch the theme art bundled in the app (images only). */
+private class AppAssets(private val ctx: Context) : StaticAssets {
+    override fun open(name: String): java.io.InputStream? {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        if (ext != "webp" && ext != "png") return null
+        return try { ctx.assets.open("art/$name") } catch (_: Exception) { null }
     }
 }

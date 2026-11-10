@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 (unreleased, branch `claude/touch-share-v1`)
+- Visual theme from the App Visual Builder export (`touch_share_visual_assets.zip`, 6 pages): Home, Sending, Receiving and Allow-device screens now use the painted art with live widgets (QR, link, latest activity line) placed over the artist's regions; tap areas over the painted buttons.
+- New `tools/prepare_art.py` converts an export into WebP art, `art-config.json` (page id -> image + regions as fractions) and the launcher icon (adaptive + legacy).
+- Allow prompt is now the themed pop-up (was a plain dialog).
+- Browser pages (download, upload, waiting) share the themed web mockup; core serves `/assets/<name>` (token required, images only). 15 core tests passing locally (2 new).
+- New launcher icon (UFO), portrait-only.
+- Not yet verified: Android compile in CI and look on a real phone (text sizes in the thin strips, tap alignment, icon crop).
+
 ## 0.2.0 (unreleased, branch `claude/touch-share-v1`)
 - Device approval: new browsers see a "Waiting for approval" page until the host taps Allow or Deny (dialog in app, or notification actions when the app is in the background). Denied IPs stay blocked. Pending devices cannot see the file list, download, or upload. (core: `DeviceRegistry`, `ShareServer`; 6 new unit tests, 13 total passing locally.)
 - Foreground service (`ShareService`) keeps the server alive in the background; notification with Stop; partial wake lock capped at 2 hours.

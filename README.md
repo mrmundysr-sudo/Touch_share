@@ -11,6 +11,9 @@ Simple phone-to-phone file sharing over a hotspot or shared Wi-Fi. No accounts, 
 
 Received files go to `Downloads/TouchShare` (Android 10+) or the app's own Downloads folder (older versions).
 
+## Visuals
+Screen art comes from the App Visual Builder. To update it: export from the builder, unzip, then `python3 -I tools/prepare_art.py <unzipped-folder>` (needs Pillow) and commit the generated `app/src/main/assets/art/` and icon resources. See `visual/TouchShare_needs.json` for the request that defines each page.
+
 ## Project layout
 - `core/` - pure Kotlin/JVM: HTTP server, token, file-name safety, network pick, pages. Unit-tested without Android.
 - `app/` - Android UI, file picker, storage, QR.
@@ -21,4 +24,4 @@ Received files go to `Downloads/TouchShare` (Android 10+) or the app's own Downl
 - `gradle :app:assembleDebug` - needs the Android SDK. CI does this on every `claude/**` push and uploads the APK as a workflow artifact.
 
 ## Status
-v0.1 scaffold. See [docs/ROADMAP.md](docs/ROADMAP.md) for what is planned and [docs/CHANGELOG.md](docs/CHANGELOG.md) for what changed.
+v0.3 themed build (device approval, background service, Visual Builder art). See [docs/ROADMAP.md](docs/ROADMAP.md) for what is planned and [docs/CHANGELOG.md](docs/CHANGELOG.md) for what changed.

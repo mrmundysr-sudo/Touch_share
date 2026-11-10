@@ -102,3 +102,35 @@ class ApprovalTest {
         } finally { s.stop() }
     }
 }
+
+class AssetsTest {
+    private val assets = object : StaticAssets {
+        override fun open(name: String): InputStream? = if (name == "page_05.webp") ByteArrayInputStream("ART".toByteArray()) else null
+    }
+
+    private fun get(url: String): Pair<Int, String> {
+        val c = URL(url).openConnection() as HttpURLConnection
+        val code = c.responseCode
+        return code to ((if (code < 400) c.inputStream else c.errorStream)?.readBytes()?.toString(Charsets.UTF_8) ?: "")
+    }
+
+    @Test fun artIsServedToWaitingDevicesButStillNeedsToken() {
+        val reg = DeviceRegistry()
+        val s = ShareServer(Mode.RECEIVE, "secret", sink = null, registry = reg, assets = assets)
+        s.start(); val base = "http://127.0.0.1:${s.listeningPort}"
+        try {
+            assertEquals(200 to "ART", get("$base/assets/page_05.webp?t=secret"))   // no cookie, still pending
+            assertTrue(reg.pending().isEmpty())                                      // asset fetch does not register a device
+            assertEquals(403, get("$base/assets/page_05.webp").first)                // token required
+            assertEquals(404, get("$base/assets/missing.webp?t=secret").first)
+            assertEquals(404, get("$base/assets/..%2Fsecret.txt?t=secret").first)    // no path tricks
+            assertEquals(404, get("$base/assets/.hidden?t=secret").first)
+        } finally { s.stop() }
+    }
+
+    @Test fun pagesReferenceTheArtWithTheToken() {
+        assertTrue(Pages.listPage("abc123", emptyList()).contains("/assets/page_05.webp?t=abc123"))
+        assertTrue(Pages.uploadPage("abc123").contains("/assets/page_05.webp?t=abc123"))
+        assertTrue(Pages.waitingPage("abc123").contains("/assets/page_05.webp?t=abc123"))
+    }
+}

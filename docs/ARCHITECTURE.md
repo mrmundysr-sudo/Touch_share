@@ -31,6 +31,13 @@ Two Gradle modules so the logic is testable without an emulator.
 - `ShareService` (app): foreground service owning the server, wake lock, notifications (session + approval with Allow/Deny).
 - `SessionHolder` (app): in-process state (url, mode, log, pending devices) that the screen renders.
 
+## 0.3 additions (visual theme)
+- `tools/prepare_art.py`: Visual Builder export -> `app/src/main/assets/art/` (WebP + `art-config.json`) and icon resources.
+- `Art` loads a page by id; `ArtLayout` fits the art to the screen (letterboxed) and positions live views over named regions.
+- `MainActivity` builds Home, Sending and Receiving as `ArtLayout`s and swaps them from `SessionHolder` state; the Allow prompt is a dialog around the page_04 art.
+- Core `StaticAssets` + `/assets/<name>` route feed the themed browser pages; `Pages` uses `page_05.webp` as the page background.
+- Art is swapped by re-running `prepare_art.py` with a new export, no code change.
+
 ## Known limits
 - Approval is on by default with no toggle; still plain HTTP (HTTPS planned 0.4).
 - Android 15 limits dataSync foreground services to about 6 hours; not handled yet.

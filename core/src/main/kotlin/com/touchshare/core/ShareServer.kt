@@ -17,6 +17,7 @@ class ShareServer(
     private val sink: FileSink? = null,
     port: Int = 0,
     private val registry: DeviceRegistry? = null,
+    private val assets: StaticAssets? = null,
     private val onEvent: (ShareEvent) -> Unit = {},
 ) : NanoHTTPD(port) {
 
@@ -36,6 +37,7 @@ class ShareServer(
             return reply(Status.FORBIDDEN, "text/plain", "Forbidden")
         }
         val path = session.uri
+        if (path.startsWith("/assets/") && session.method == Method.GET) return asset(path.removePrefix("/assets/"))
         var newCookie: String? = null
         if (registry != null) {
             val ip = session.remoteIpAddress ?: ""
@@ -75,6 +77,22 @@ class ShareServer(
         } catch (e: Exception) {
             reply(Status.INTERNAL_ERROR, "text/plain", "Error")
         }
+    }
+
+    /** Theme art for the web pages. Token-protected like everything else, but open to devices still waiting. */
+    private fun asset(name: String): Response {
+        val ok = name.isNotEmpty() && name.length <= 64 && !name.startsWith(".") &&
+            name.all { it.isLetterOrDigit() || it == '_' || it == '-' || it == '.' }
+        val stream = if (ok) assets?.open(name) else null
+        if (stream == null) return reply(Status.NOT_FOUND, "text/plain", "Not found")
+        val mime = when (name.substringAfterLast('.', "").lowercase()) {
+            "webp" -> "image/webp"; "png" -> "image/png"; "jpg", "jpeg" -> "image/jpeg"
+            "css" -> "text/css"; else -> "application/octet-stream"
+        }
+        val r = newChunkedResponse(Status.OK, mime, stream)
+        r.addHeader("Cache-Control", "private, max-age=3600")
+        r.addHeader("X-Content-Type-Options", "nosniff")
+        return r
     }
 
     private fun withCookie(r: Response, id: String?): Response {

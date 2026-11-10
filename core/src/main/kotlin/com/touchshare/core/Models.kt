@@ -15,6 +15,11 @@ interface FileSink {
     fun save(name: String, data: InputStream, size: Long): String
 }
 
+/** Read-only art/CSS the web pages may fetch (served under /assets/<name>). */
+interface StaticAssets {
+    fun open(name: String): InputStream?
+}
+
 enum class Mode { SEND, RECEIVE }
 
 sealed class ShareEvent {
