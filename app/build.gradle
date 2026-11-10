@@ -15,8 +15,8 @@ android {
         buildConfigField 'String', 'ANYWHERE_SERVER', '"' + anywhereServer.replace('\\', '\\\\').replace('"', '\\"') + '"'
         minSdk 24
         targetSdk 34
-        versionCode 8
-        versionName "0.4.4"
+        versionCode 9
+        versionName "0.5.0-anywhere1"
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
