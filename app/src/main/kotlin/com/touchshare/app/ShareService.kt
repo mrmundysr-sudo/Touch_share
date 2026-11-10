@@ -104,6 +104,7 @@ class ShareService : Service() {
     private fun describe(e: ShareEvent) = when (e) {
         is ShareEvent.DownloadStarted -> "Sending ${e.name}…"
         is ShareEvent.DownloadFinished -> "Sent ${e.name}"
+        is ShareEvent.UploadStarted -> "Incoming ${e.name} (${Pages.humanSize(e.size)})"
         is ShareEvent.UploadProgress -> "Receiving ${e.name} ${if (e.total > 0) (e.received * 100 / e.total).toInt() else 0}%"
         is ShareEvent.Uploaded -> "Received ${e.savedAs} (${Pages.humanSize(e.size)})"
         is ShareEvent.Rejected -> "Blocked a request (${e.reason})"

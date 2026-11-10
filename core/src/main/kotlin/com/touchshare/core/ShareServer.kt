@@ -78,6 +78,7 @@ class ShareServer(
                 mode == Mode.RECEIVE && session.method == Method.POST && path == "/upload/start" -> uploadStart(session)
                 mode == Mode.RECEIVE && session.method == Method.GET && path == "/upload/status" -> uploadStatus(session)
                 mode == Mode.RECEIVE && session.method == Method.PUT && path == "/upload/chunk" -> uploadChunk(session)
+                mode == Mode.RECEIVE && session.method == Method.POST && path == "/upload/cancel" -> uploadCancel(session)
                 else -> reply(Status.NOT_FOUND, "text/plain", "Not found")
             }
         } catch (e: Exception) {
@@ -182,7 +183,9 @@ class ShareServer(
 
     private val uploads = java.util.concurrent.ConcurrentHashMap<String, UploadState>()
 
-    private fun json(status: Response.IStatus, body: String) = reply(status, "application/json", body)
+    /** Upload API replies close the connection: every request gets a fresh one, which sidesteps browser keep-alive quirks. */
+    private fun json(status: Response.IStatus, body: String) =
+        reply(status, "application/json", body).also { it.addHeader("Connection", "close") }
     private fun jstr(s: String) = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
     private fun uploadStart(session: IHTTPSession): Response {
@@ -202,7 +205,14 @@ class ShareServer(
         }
         val id = TokenAuth.generate(8)
         uploads[id] = UploadState(name, size, up)
+        onEvent(ShareEvent.UploadStarted(name, size))
         return json(Status.OK, "{\"id\":\"$id\",\"offset\":0}")
+    }
+
+    private fun uploadCancel(session: IHTTPSession): Response {
+        val u = uploads.remove(session.parameters["id"]?.firstOrNull() ?: "")
+        if (u != null) runCatching { u.upload.abort() }
+        return json(Status.OK, "{\"ok\":true}")
     }
 
     private fun uploadStatus(session: IHTTPSession): Response {

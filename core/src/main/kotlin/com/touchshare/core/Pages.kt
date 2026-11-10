@@ -41,6 +41,8 @@ button{-webkit-appearance:none;appearance:none;font-size:1rem;font-weight:700;co
  padding:12px 18px;margin:8px 12px 8px 0;background:linear-gradient(#35d12f,#0c7a1c);border:2px solid #cfd8d4;border-radius:14px}
 input[type=file]{font-size:1rem;color:var(--t);max-width:100%}
 p{line-height:1.45}
+details{margin-top:14px;font-size:.8rem;color:#8fd68a}
+pre{white-space:pre-wrap;word-break:break-all;max-height:220px;overflow:auto;color:#bfe8bb}
 </style></head><body><div class="page">$body</div></body></html>"""
 
     fun listPage(token: String, files: List<ShareFile>): String {
@@ -55,13 +57,20 @@ p{line-height:1.45}
 <input id="p" type="file" multiple><br><button id="b">Upload</button>
 <p id="hint">If a transfer is interrupted it carries on by itself. If you close the page, choose the same files again and tap Upload to continue.</p>
 <div id="log"></div>
+<details><summary>Details (for troubleshooting)</summary><pre id="dbg"></pre></details>
 <script>
-var T=${jsString(token)},CHUNK=1024*1024,queue=[],busy=false;
+var T=${jsString(token)},CHUNK=1024*1024,queue=[],busy=false,t0=Date.now();
+function dbg(m){var d=document.getElementById('dbg');if(!d)return;var s=((Date.now()-t0)/1000).toFixed(1);d.textContent=(s+'s '+m+'\n'+d.textContent).slice(0,4000)}
+dbg('page ready. '+navigator.userAgent);
 function q(p){return p+(p.indexOf('?')<0?'?':'&')+'t='+encodeURIComponent(T)}
-function req(m,u,body,onp,cb){
- var x=new XMLHttpRequest(),fin=false;x.open(m,q(u));x.timeout=40000;
- if(onp)x.upload.onprogress=onp;
- function end(e){if(!fin){fin=true;cb(e,x)}}
+function req(m,u,body,onp,cb,tmo){
+ var x=new XMLHttpRequest(),fin=false,st=Date.now(),seen=false,tag=m+' '+u.split('?')[0]+(u.indexOf('offset=')>=0?' @'+u.split('offset=')[1]:'');
+ x.open(m,q(u));x.timeout=tmo||20000;
+ dbg('> '+tag+(body&&body.size?' ('+body.size+' B)':''));
+ var w=setTimeout(function(){if(!fin)dbg('  still waiting after 10 s (readyState '+x.readyState+')')},10000);
+ x.upload.onprogress=function(e){if(!seen){seen=true;dbg('  upload progress events are arriving')}if(onp)onp(e)};
+ x.upload.onload=function(){dbg('  body sent in '+(Date.now()-st)+' ms')};
+ function end(e){if(!fin){fin=true;clearTimeout(w);dbg('< '+tag+' '+(e?'ERR '+e:'HTTP '+x.status)+' after '+(Date.now()-st)+' ms');cb(e,x)}}
  x.onload=function(){end(null)};x.onerror=function(){end('network')};x.ontimeout=function(){end('timed out')};x.onabort=function(){end('aborted')};
  x.send(body||null);
 }
@@ -70,11 +79,25 @@ function put(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function del(k){try{localStorage.removeItem(k)}catch(e){}}
 function upload(file,row,pr,done){
- var key='ts-up-'+T+'-'+file.name+'-'+file.size+'-'+file.lastModified,id=null,offset=0,tries=0;
+ var key='ts-up-'+T+'-'+file.name+'-'+file.size+'-'+file.lastModified,id=null,offset=0,tries=0,stalls=0,simpleMode=false;
+ dbg('file '+file.name+', '+file.size+' bytes, type "'+file.type+'"');
  function label(t){row.firstChild.nodeValue=file.name+' '+t+' '}
  function fail(t){label('\u2717 '+t);pr.style.display='none';done()}
  function ok(){label('\u2713 sent');pr.style.display='none';del(key);done()}
- function retry(why){tries++;why=why||'unknown';if(tries>8)return fail('connection lost ('+why+')');label('(reconnecting\u2026 '+why+')');setTimeout(resync,Math.min(1000*tries,5000))}
+ function simple(){
+  if(simpleMode)return;simpleMode=true;
+  dbg('switching to single-request upload');label('(simple upload)');
+  var go=function(){
+   var d=new FormData();d.append('file',file,file.name);
+   req('POST','/upload',d,function(e){if(e.lengthComputable){pr.value=e.loaded/e.total;label(Math.round(100*e.loaded/e.total)+'% (simple upload)')}},
+    function(e,x){if(e)return fail(e+' (simple upload)');if(x.status==200)return ok();fail('HTTP '+x.status+' (simple upload)')},600000);
+  };
+  if(id){req('POST','/upload/cancel?id='+id,null,null,function(){go()},8000)}else go();
+ }
+ function retry(why){tries++;why=why||'unknown';
+  if(why==='timed out'||why==='aborted')stalls++;   /* silence = a stall: switch to the plain upload; real dropouts keep retrying and resume */
+  if(stalls>=2||tries>8)return simple();
+  label('(reconnecting\u2026 '+why+')');setTimeout(resync,Math.min(1000*tries,5000))}
  function bad(e,x){return e?e:'HTTP '+x.status}
  function resync(){
   if(!id)return start();
@@ -83,7 +106,7 @@ function upload(file,row,pr,done){
    if(x.status==404){del(key);id=null;return start()}
    if(x.status!=200)return retry(bad(e,x));
    offset=js(x).offset||0;send();
-  });
+  },10000);
  }
  function start(){
   req('POST','/upload/start?name='+encodeURIComponent(file.name)+'&size='+file.size,null,null,function(e,x){
@@ -94,7 +117,7 @@ function upload(file,row,pr,done){
    var j=js(x);id=j.id;offset=j.offset||0;put(key,id);
    if(j.done)return ok();
    send();
-  });
+  },10000);
  }
  function send(){
   var end=Math.min(offset+CHUNK,file.size);
@@ -102,12 +125,12 @@ function upload(file,row,pr,done){
    if(e.lengthComputable){pr.value=(offset+e.loaded)/file.size;label(Math.round(100*(offset+e.loaded)/file.size)+'%')}
   },function(e,x){
    if(e)return retry(e);
-   if(x.status==200){var j=js(x);tries=0;offset=j.offset;pr.value=offset/file.size;if(j.done)return ok();return send()}
+   if(x.status==200){var j=js(x);tries=0;stalls=0;offset=j.offset;pr.value=offset/file.size;if(j.done)return ok();return send()}
    if(x.status==409){offset=js(x).offset||0;return send()}
    if(x.status==404){del(key);id=null;offset=0;return start()}
    if(x.status==403)return fail('declined');
    retry(bad(e,x));
-  });
+  },20000);
  }
  var saved=get(key);
  if(saved){id=saved;resync()}else start();

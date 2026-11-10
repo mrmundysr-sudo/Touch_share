@@ -53,6 +53,7 @@ class DownloadsSink(private val ctx: Context) : FileSink {
     private val used = HashSet<String>()
 
     @Synchronized private fun reserve(name: String): String = FileNames.unique(name, used).also { used += it }
+    @Synchronized private fun release(name: String) { used -= name }
 
     override fun hasSpace(size: Long): Boolean = try {
         StatFs(Environment.getExternalStorageDirectory().path).availableBytes > size + 50L * 1024 * 1024
@@ -76,7 +77,7 @@ class DownloadsSink(private val ctx: Context) : FileSink {
                     out.close(); cv.clear(); cv.put(MediaStore.Downloads.IS_PENDING, 0); cr.update(uri, cv, null, null)
                     return finalName
                 }
-                override fun abort() { try { out.close() } catch (_: Exception) {}; cr.delete(uri, null, null) }
+                override fun abort() { try { out.close() } catch (_: Exception) {}; cr.delete(uri, null, null); release(finalName) }
             }
         }
         val dir = ctx.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: ctx.filesDir
@@ -86,7 +87,7 @@ class DownloadsSink(private val ctx: Context) : FileSink {
         return object : IncomingUpload {
             override fun write(buf: ByteArray, off: Int, len: Int) = out.write(buf, off, len)
             override fun finish(): String { out.close(); return target.name }
-            override fun abort() { try { out.close() } catch (_: Exception) {}; target.delete() }
+            override fun abort() { try { out.close() } catch (_: Exception) {}; target.delete(); release(finalName) }
         }
     }
 

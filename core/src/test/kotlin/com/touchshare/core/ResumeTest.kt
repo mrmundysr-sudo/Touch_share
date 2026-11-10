@@ -201,4 +201,25 @@ class ResumableUploadTest {
         }
         assertEquals(1000, sink.done["slow.bin"]!!.size)
     }
+
+    @Test fun cancelAbortsThePartialAndLetsTheClientRetryWithAnotherMethod() {
+        val ev = mutableListOf<ShareEvent>()
+        run(events = ev) { base, sink ->
+            val id = id(start(base, "c.bin", 100)); chunk(base, id, 0, ByteArray(10))
+            assertEquals(200, call("POST", "$base/upload/cancel?t=secret&id=$id").code)
+            assertEquals(1, sink.aborted)
+            assertEquals(404, chunk(base, id, 10, ByteArray(10)).code)
+            assertEquals(200, call("POST", "$base/upload/cancel?t=secret&id=nonexistent").code)  // harmless
+        }
+        assertTrue(ev.any { it is ShareEvent.UploadStarted && it.name == "c.bin" && it.size == 100L })
+    }
+
+    @Test fun uploadApiAsksTheClientToCloseEachConnection() = run { base, _ ->
+        java.net.Socket("127.0.0.1", URL(base).port).use { sock ->
+            sock.soTimeout = 10_000
+            sock.getOutputStream().write("POST /upload/start?t=secret&name=a&size=5 HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\n\r\n".toByteArray())
+            val text = sock.getInputStream().readBytes().toString(Charsets.UTF_8)   // returns only because the server closes the socket
+            assertTrue(text.lowercase().contains("connection: close"), text)
+        }
+    }
 }

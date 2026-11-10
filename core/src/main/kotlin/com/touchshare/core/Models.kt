@@ -63,6 +63,7 @@ enum class Mode { SEND, RECEIVE }
 sealed class ShareEvent {
     data class DownloadStarted(val name: String) : ShareEvent()
     data class DownloadFinished(val name: String) : ShareEvent()
+    data class UploadStarted(val name: String, val size: Long) : ShareEvent()
     data class UploadProgress(val name: String, val received: Long, val total: Long) : ShareEvent()
     data class Uploaded(val name: String, val savedAs: String, val size: Long) : ShareEvent()
     data class Rejected(val reason: String) : ShareEvent()

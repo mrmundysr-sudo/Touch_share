@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.2 (unreleased, branch `claude/touch-share-v1`)
+Second round after the owner retried iPhone to Android with 0.4.1: the upload still stopped after the first chunk (about 5%), with no percentage text and no error on the iPhone page, so the 5 s timeout fix was not the (only) cause. The real cause is not yet proven; this build removes suspects, adds evidence and adds a way through.
+- Upload API replies now carry `Connection: close`, so every request uses a fresh connection (rules out browser keep-alive reuse).
+- Upload page has a "Details (for troubleshooting)" panel with a timestamped log of every request (start, body sent, status, error, time taken, whether upload progress events arrive, readyState while waiting, browser user agent). Photograph it if an upload stalls.
+- Automatic fallback: if two chunk requests in a row get no answer at all (timeout/abort = a silent stall), the page cancels the partial upload (`POST /upload/cancel`) and sends the file in one plain request (`POST /upload`). Real dropouts (quick network errors) keep retrying and resuming as before. Request timeouts: 20 s per chunk, 10 s for start/status.
+- Host screen logs "Incoming name (size)" when an upload starts, so a start that never arrives is distinguishable from a chunk that never arrives.
+- A cancelled or aborted upload releases its file name (no stray "(2)" copies).
+- Verified here: 32 core tests; real page in headless Chromium: dropped chunks recover and resume, closed-and-reopened page resumes at 1 MB, and a chunk that never gets answered (iPhone-like stall) falls back to the plain upload after about 41 s with an identical file.
+- Not verified: real Safari on iOS. Owner also reported the old stuck file status appearing after uninstall and reinstall; unexplained, asked which screen.
+
 ## 0.4.1 (unreleased, branch `claude/touch-share-v1`)
 Fixes after the owner's first iPhone-to-Android upload test (uploads stalled at about 6% on both files; the iPhone page also showed unreadable buttons and an empty progress bar).
 - Server: socket read timeout raised from NanoHTTPD's 5 s to 60 s. Reproduced here: a sender that goes quiet for more than 5 s mid-chunk (for example while iOS reads a large file) got HTTP 500 and a broken connection. New regression test (sender pauses 6.5 s) passes; manual test with an 8 s pause returns 200.
