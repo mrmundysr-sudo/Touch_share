@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased (branch `claude/touch-share-remote`)
+- Artwork request updated (visual/TouchShare_needs.json, 9 pages): new "Anywhere (beta)" screen and "Anywhere QR overlay" pop-up pages (D-024); the chooser page loses the server-address item. Validated with the builder's own parser.
 - Anywhere (beta) in the app, first build: Send or Receive now asks "Same Wi-Fi or hotspot" or "Anywhere (beta)". Anywhere shows the same QR/link screens, asks for the matchmaker address once (setting, filled from the clipboard), and runs the shared peer script in a hidden WebView. New browser test for the WebView script against the real guest page (8 checks pass). Not yet compiled or run on a phone.
 - The Anywhere server address is now supplied at build time from the GitHub variable/secret `ANYWHERE_SERVER` (D-023); no paste step once it is set. The first Android compile of the Anywhere code passed in CI (run 21).
 - visual/TouchShare_needs.json gains a "Choose how to share" page for the themed chooser.

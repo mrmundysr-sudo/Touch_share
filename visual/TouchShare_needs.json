@@ -155,13 +155,13 @@
         "w": 1080,
         "h": 1920
       },
-      "notes": "Just the pop-up box on a transparent background, like the Allow pop-up. Paint the words on the buttons. Leave a short title area (the app writes Send how? or Receive how?). The third item is a small, quiet link-style button for changing the server address.",
+      "notes": "Just the pop-up box on a transparent background, like the Allow pop-up. Paint the words on the two big buttons. Leave a short title area (the app writes Send how? or Receive how?).",
       "assets": [
         {
           "key": "clean",
           "slot": "clean",
           "name": "choose_popup.png",
-          "description": "The pop-up box with the two big buttons and the small address button, transparent around it, no title text."
+          "description": "The pop-up box with the two big buttons, transparent around it, no title text."
         }
       ],
       "regions": [
@@ -179,11 +179,92 @@
           "label": "anywhere_button",
           "type": "box",
           "action": "tap to share from anywhere (beta)"
+        }
+      ]
+    },
+    {
+      "key": "anywhere",
+      "name": "Anywhere (beta)",
+      "purpose": "Shown while this phone shares from anywhere. The person sends the other person a link, they open it in any browser, and this phone approves.",
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
+      "notes": "Used for both sending and receiving. Paint: the title, three short steps (1 Send them the link. 2 They open it in any browser, nothing to install. 3 You approve when they connect.), the big Share link button with its words, a small sample QR icon labelled Show QR, and the Stop button with its words. The sample QR should look like a QR but must NOT be a real scannable code. The local Same Wi-Fi screens are not changing. Leave the code, status and expiry areas empty: the app writes live text there.",
+      "assets": [
+        {
+          "key": "clean",
+          "slot": "clean",
+          "name": "anywhere.png",
+          "description": "The full Anywhere screen as it should look, with the buttons in place and the live-text areas empty."
+        }
+      ],
+      "regions": [
+        {
+          "label": "share_button",
+          "type": "box",
+          "action": "tap to share the link with the phone's share sheet (Messages, WhatsApp, email, copy)"
         },
         {
-          "label": "server_address_button",
+          "label": "qr_button",
           "type": "box",
-          "action": "tap to change the address of the Anywhere matchmaker"
+          "action": "tap to open the QR code overlay. Make the tap area at least 150 px square even if the icon is smaller"
+        },
+        {
+          "label": "code_area",
+          "type": "box",
+          "action": "the app writes the 6-digit code and the website name here, for reading aloud"
+        },
+        {
+          "label": "status_line",
+          "type": "box",
+          "action": "the app writes the latest activity here, for example 'Waiting for the other person'"
+        },
+        {
+          "label": "expires_area",
+          "type": "box",
+          "action": "the app writes 'Link works for 10 minutes' here",
+          "required": false
+        },
+        {
+          "label": "stop_button",
+          "type": "box",
+          "action": "tap to stop sharing"
+        }
+      ]
+    },
+    {
+      "key": "anywhere_qr",
+      "name": "Anywhere QR overlay",
+      "purpose": "A pop-up showing the real QR code, for when the other person is nearby or on a video call.",
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
+      "notes": "Just the frame on a transparent background; it floats over a dimmed screen. The QR square must be plain white, square and at least 640 px wide (QR codes need the contrast). The app draws the real QR inside it and writes the code text below. Add a close button; tapping anywhere also closes it.",
+      "assets": [
+        {
+          "key": "clean",
+          "slot": "clean",
+          "name": "anywhere_qr.png",
+          "description": "The pop-up frame with the plain white QR square, an empty code text area and a close button, transparent around it."
+        }
+      ],
+      "regions": [
+        {
+          "label": "qr_square",
+          "type": "box",
+          "action": "the app draws the real QR code here (keep it plain white, at least 640 px wide)"
+        },
+        {
+          "label": "code_area",
+          "type": "box",
+          "action": "the app writes the 6-digit code and the website name here"
+        },
+        {
+          "label": "close_button",
+          "type": "box",
+          "action": "tap to close the overlay"
         }
       ]
     },
