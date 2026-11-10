@@ -11,6 +11,9 @@ Simple phone-to-phone file sharing over a hotspot or shared Wi-Fi. No accounts, 
 
 Received files go to `Downloads/TouchShare` (Android 10+) or the app's own Downloads folder (older versions).
 
+## Safety note
+Touch Share uses plain HTTP on purpose. Use it on your own hotspot or a Wi-Fi you trust, not on public Wi-Fi. A one-time link plus your tap on **Allow** protects each session, but the traffic itself is not encrypted.
+
 ## Visuals
 Screen art comes from the App Visual Builder. To update it: export from the builder, unzip, then `python3 -I tools/prepare_art.py <unzipped-folder>` (needs Pillow) and commit the generated `app/src/main/assets/art/` and icon resources. See `visual/TouchShare_needs.json` for the request that defines each page.
 

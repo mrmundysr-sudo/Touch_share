@@ -37,7 +37,17 @@ object SessionHolder {
     }
 
     @Synchronized fun fail(msg: String) { error = msg; changed() }
-    @Synchronized fun addLog(line: String) { log.addFirst(line); while (log.size > 8) log.removeLast(); changed() }
+    private var progressKey: String? = null
+
+    @Synchronized fun addLog(line: String) { progressKey = null; log.addFirst(line); while (log.size > 8) log.removeLast(); changed() }
+
+    /** A running transfer updates one line in place instead of flooding the log. */
+    @Synchronized fun setProgress(key: String, line: String) {
+        if (progressKey == key && log.isNotEmpty()) log[0] = line else log.addFirst(line)
+        progressKey = key
+        while (log.size > 8) log.removeLast()
+        changed()
+    }
     @Synchronized fun addPending(d: Device) { pending[d.id] = d; changed() }
     @Synchronized fun removePending(id: String) { pending.remove(id); changed() }
 

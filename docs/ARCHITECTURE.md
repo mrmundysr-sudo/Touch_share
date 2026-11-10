@@ -38,8 +38,14 @@ Two Gradle modules so the logic is testable without an emulator.
 - Core `StaticAssets` + `/assets/<name>` route feed the themed browser pages; `Pages` uses `page_05.webp` as the page background.
 - Art is swapped by re-running `prepare_art.py` with a new export, no code change.
 
+## 0.4 additions (resume)
+- Downloads: `GET /f/<id>` honours `Range: bytes=...` (206 + Content-Range), sends `Accept-Ranges` and an ETag, honours `If-Range`, answers HEAD. `FileSource.openAt(id, offset)` seeks (default skips).
+- Uploads: `POST /upload/start?name&size` -> `{id, offset}`; `PUT /upload/chunk?id&offset` with the raw bytes (409 + current offset if out of order; `done` when complete); `GET /upload/status?id` -> `{offset, size}`. Chunks are written in order through `FileSink.begin()` -> `IncomingUpload` (write/finish/abort). Android's sink writes to a pending MediaStore item and publishes it on finish. Limits: 16 chunk MB max, 16 concurrent uploads, free-space check.
+- The page stores the upload id in localStorage (key = token + file name/size/modified) so the same file resumes after the page is closed, as long as the session is still running.
+
 ## Known limits
-- Approval is on by default with no toggle; still plain HTTP (HTTPS planned 0.4).
+- Resume only works within a session. Stop discards partial uploads.
+- Approval is on by default with no toggle. Plain HTTP by design (D-016): use it on your own hotspot or a Wi-Fi you trust.
 - Android 15 limits dataSync foreground services to about 6 hours; not handled yet.
 - No idle auto-stop yet (wake lock has a 2-hour safety cap).
 

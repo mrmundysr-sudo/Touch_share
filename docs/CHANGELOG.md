@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 (unreleased, branch `claude/touch-share-v1`)
+- Resumable downloads: server answers HTTP Range (single ranges, suffix ranges, 416, If-Range, ETag, Accept-Ranges, HEAD). The Android file source seeks straight to the offset.
+- Resumable uploads: new `/upload/start`, `/upload/status`, `/upload/chunk` protocol; the web page sends files in 2 MB chunks, retries with back-off, resyncs after a drop, and remembers the upload so choosing the same file after closing the page continues from where it stopped. Bytes are written straight to Downloads/TouchShare (no temp copy); free-space check (HTTP 507); partial files are removed if the session stops. Old one-shot `/upload` still works.
+- Host screen shows a live "Receiving name NN%" line.
+- Verified here: 29 core tests pass; the real upload page was driven in headless Chromium against the real server with two chunks deliberately dropped (7 MB file saved byte-identical) and with the page closed and reopened mid-upload (resumed at 2,097,152 bytes, identical file).
+- Not yet verified: Android compile in CI, MediaStore pending-item writes, seek on real file providers, and behaviour on a real phone over a hotspot.
+
 ## 0.3.0 (unreleased, branch `claude/touch-share-v1`)
 - Visual theme from the App Visual Builder export (`touch_share_visual_assets.zip`, 6 pages): Home, Sending, Receiving and Allow-device screens now use the painted art with live widgets (QR, link, latest activity line) placed over the artist's regions; tap areas over the painted buttons.
 - New `tools/prepare_art.py` converts an export into WebP art, `art-config.json` (page id -> image + regions as fractions) and the launcher icon (adaptive + legacy).

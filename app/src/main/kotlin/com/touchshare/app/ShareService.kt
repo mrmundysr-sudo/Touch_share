@@ -55,7 +55,9 @@ class ShareService : Service() {
             sink = if (mode == Mode.RECEIVE) DownloadsSink(applicationContext) else null,
             registry = registry,
             assets = AppAssets(applicationContext),
-            onEvent = { e -> SessionHolder.addLog(describe(e)) },
+            onEvent = { e ->
+                if (e is ShareEvent.UploadProgress) SessionHolder.setProgress(e.name, describe(e)) else SessionHolder.addLog(describe(e))
+            },
         )
         try { s.start() } catch (e: Exception) {
             SessionHolder.fail("Could not start server: ${e.message}"); stopSession(); return
@@ -102,6 +104,7 @@ class ShareService : Service() {
     private fun describe(e: ShareEvent) = when (e) {
         is ShareEvent.DownloadStarted -> "Sending ${e.name}…"
         is ShareEvent.DownloadFinished -> "Sent ${e.name}"
+        is ShareEvent.UploadProgress -> "Receiving ${e.name} ${if (e.total > 0) (e.received * 100 / e.total).toInt() else 0}%"
         is ShareEvent.Uploaded -> "Received ${e.savedAs} (${Pages.humanSize(e.size)})"
         is ShareEvent.Rejected -> "Blocked a request (${e.reason})"
         is ShareEvent.Failed -> "Failed ${e.name}: ${e.message}"
