@@ -40,6 +40,7 @@ class MainActivity : Activity() {
     private var qrFor: String? = null
     private var qrBitmap: Bitmap? = null
     private var dialog: Dialog? = null
+    private var promptDialog: Dialog? = null
     private var dialogFor: String? = null
     private var lastError: String? = null
 
@@ -59,10 +60,6 @@ class MainActivity : Activity() {
 
         container = FrameLayout(this).apply { setBackgroundColor(0xFF05080A.toInt()) }
         setContentView(container, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2) // optional: only needed for background prompts
-        }
     }
 
     /** A see-through button laid over painted artwork, with a light ripple when pressed. */
@@ -112,6 +109,7 @@ class MainActivity : Activity() {
     override fun onStop() {
         SessionHolder.listener = null
         dialog?.dismiss(); dialog = null; dialogFor = null
+        promptDialog?.dismiss(); promptDialog = null
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onStop()
     }
@@ -136,7 +134,31 @@ class MainActivity : Activity() {
         if (uris.isNotEmpty()) startSession(Mode.SEND, uris)
     }
 
+    private val prefs by lazy { getSharedPreferences("touchshare", MODE_PRIVATE) }
+
+    private fun needsNotificationPrompt() = Build.VERSION.SDK_INT >= 33 &&
+        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+        !prefs.getBoolean("asked_notifications", false)
+
     private fun startSession(mode: Mode, uris: List<Uri>?) {
+        if (!needsNotificationPrompt()) { launchSession(mode, uris); return }
+        // Themed explainer first; Android's own permission box only appears if the user continues.
+        promptDialog?.dismiss()
+        promptDialog = artDialog(
+            "Get an alert when another device wants to connect, even when Touch Share is in the background?\n\nYou can still use the app if you say no.",
+            onAllow = {
+                prefs.edit().putBoolean("asked_notifications", true).apply()
+                if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2)
+                launchSession(mode, uris)
+            },
+            onDeny = {
+                prefs.edit().putBoolean("asked_notifications", true).apply()
+                launchSession(mode, uris)
+            },
+        ).also { it.show() }
+    }
+
+    private fun launchSession(mode: Mode, uris: List<Uri>?) {
         SessionHolder.requestStart(mode, uris)
         val i = Intent(this, ShareService::class.java).setAction(ShareService.ACTION_START)
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i)
@@ -183,22 +205,31 @@ class MainActivity : Activity() {
         dialog?.dismiss()
         dialogFor = d.id
 
+        dialog = artDialog(
+            "Device at ${d.ip}\n${browserName(d.userAgent)}\n\nOnly allow a phone or computer you recognise.",
+            onAllow = { SessionHolder.registry?.allow(d.id) },
+            onDeny = { SessionHolder.registry?.deny(d.id) },
+        ).also { it.show() }
+    }
+
+    /** The themed pop-up (page_04 art): a message, plus the painted Allow and Deny buttons. */
+    private fun artDialog(text: String, onAllow: () -> Unit, onDeny: () -> Unit): Dialog {
         val art = Art.page(this, Art.ALLOW_DEVICE)
-        val message = textIn(0.1f, Color.WHITE).apply { setSingleLine(false); maxLines = 6; ellipsize = null }
-        message.text = "Device at ${d.ip}\n${browserName(d.userAgent)}\n\nOnly allow a phone or computer you recognise."
+        val message = textIn(0.088f, Color.WHITE).apply { setSingleLine(false); maxLines = 8; ellipsize = null }
+        message.text = text
         val dlg = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
         val layout = ArtLayout(this, art.bitmap, scaleFactor = 0.94f, backdrop = Color.TRANSPARENT).apply {
             region(message, art.region("message_area"), ::sized)
-            region(tapArea { SessionHolder.registry?.allow(d.id); dlg.dismiss() }, art.region("allow_button"))
-            region(tapArea { SessionHolder.registry?.deny(d.id); dlg.dismiss() }, art.region("deny_button"))
+            region(tapArea { onAllow(); dlg.dismiss() }, art.region("allow_button"))
+            region(tapArea { onDeny(); dlg.dismiss() }, art.region("deny_button"))
         }
         dlg.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dlg.setContentView(layout, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         dlg.setCancelable(false)
         dlg.window?.apply { addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND); setDimAmount(0.75f) }
-        dialog = dlg
-        dlg.show()
+        return dlg
     }
 
-    override fun onDestroy() { dialog?.dismiss(); super.onDestroy() }
+
+    override fun onDestroy() { dialog?.dismiss(); promptDialog?.dismiss(); super.onDestroy() }
 }

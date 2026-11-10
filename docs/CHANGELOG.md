@@ -6,7 +6,9 @@
 - Allow prompt is now the themed pop-up (was a plain dialog).
 - Browser pages (download, upload, waiting) share the themed web mockup; core serves `/assets/<name>` (token required, images only). 15 core tests passing locally (2 new).
 - New launcher icon (UFO), portrait-only.
-- Not yet verified: Android compile in CI and look on a real phone (text sizes in the thin strips, tap alignment, icon crop).
+- Notification permission: no longer requested at launch. The first time you start sharing, a themed pop-up (same art as the Allow prompt) explains why; Android's own system box (which cannot be themed) appears only if you choose Allow. Asked once; saying no still lets you share.
+- Owner-verified on device: builds install and run; the system notification box was the only unthemed element (owner screenshot 2026-11-10).
+- Not yet verified: tap alignment of all screens, text fit in the thin strips, icon crop.
 
 ## 0.2.0 (unreleased, branch `claude/touch-share-v1`)
 - Device approval: new browsers see a "Waiting for approval" page until the host taps Allow or Deny (dialog in app, or notification actions when the app is in the background). Denied IPs stay blocked. Pending devices cannot see the file list, download, or upload. (core: `DeviceRegistry`, `ShareServer`; 6 new unit tests, 13 total passing locally.)
