@@ -21,4 +21,15 @@ android {
 dependencies {
     implementation project(':core')
     implementation 'com.google.zxing:core:3.5.3'
+    implementation 'androidx.webkit:webkit:1.12.1'   // loads the hidden Anywhere page from the app's assets over a secure origin
 }
+
+// The shared WebRTC script lives in remote/web/peer.js (used by the web pages too). Copy it into the app's assets at build time
+// so there is one source of truth.
+def remoteAssets = layout.buildDirectory.dir("generated/remoteAssets")
+tasks.register('copyRemotePeer', Copy) {
+    from("${rootDir}/remote/web/peer.js")
+    into(remoteAssets.map { it.dir("remote") })
+}
+android.sourceSets.main.assets.srcDir(remoteAssets)
+tasks.named('preBuild') { dependsOn 'copyRemotePeer' }

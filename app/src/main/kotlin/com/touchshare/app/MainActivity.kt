@@ -2,6 +2,7 @@ package com.touchshare.app
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.Dialog
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -22,6 +23,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
@@ -140,8 +142,44 @@ class MainActivity : Activity() {
         checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
         !prefs.getBoolean("asked_notifications", false)
 
+    /** Temporary plain chooser (themed art for it is still to come): same Wi-Fi, or Anywhere (beta). */
     private fun startSession(mode: Mode, uris: List<Uri>?) {
-        if (!needsNotificationPrompt()) { launchSession(mode, uris); return }
+        val items = arrayOf("Same Wi-Fi or hotspot", "Anywhere (beta)", "Anywhere server address\u2026")
+        AlertDialog.Builder(this)
+            .setTitle(if (mode == Mode.SEND) "Send how?" else "Receive how?")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> startAfterChoice(mode, uris, false)
+                    1 -> if (RemoteConfig.serverUrl(this) == null) askServerAddress { startAfterChoice(mode, uris, true) } else startAfterChoice(mode, uris, true)
+                    2 -> askServerAddress { startSession(mode, uris) }
+                }
+            }
+            .show()
+    }
+
+    /** Asks for the matchmaker address once; fills it in from the clipboard if a web address was just copied. */
+    private fun askServerAddress(done: () -> Unit) {
+        val box = EditText(this).apply {
+            hint = "https://your-name.workers.dev"
+            setSingleLine(true)
+            val clip = (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).primaryClip?.getItemAt(0)?.text?.toString()
+            setText(RemoteConfig.serverUrl(this@MainActivity) ?: RemoteConfig.normalize(clip) ?: "")
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Anywhere server address")
+            .setMessage("The address of your Touch Share matchmaker (from Cloudflare). Copy it first and it fills in here.")
+            .setView(box)
+            .setPositiveButton("Save") { _, _ ->
+                val url = RemoteConfig.normalize(box.text.toString())
+                if (url == null) Toast.makeText(this, "That doesn't look like a web address (it must start with https://).", Toast.LENGTH_LONG).show()
+                else { RemoteConfig.setServerUrl(this, url); done() }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun startAfterChoice(mode: Mode, uris: List<Uri>?, remote: Boolean) {
+        if (!needsNotificationPrompt()) { launchSession(mode, uris, remote); return }
         // Themed explainer first; Android's own permission box only appears if the user continues.
         promptDialog?.dismiss()
         promptDialog = artDialog(
@@ -149,17 +187,17 @@ class MainActivity : Activity() {
             onAllow = {
                 prefs.edit().putBoolean("asked_notifications", true).apply()
                 if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2)
-                launchSession(mode, uris)
+                launchSession(mode, uris, remote)
             },
             onDeny = {
                 prefs.edit().putBoolean("asked_notifications", true).apply()
-                launchSession(mode, uris)
+                launchSession(mode, uris, remote)
             },
         ).also { it.show() }
     }
 
-    private fun launchSession(mode: Mode, uris: List<Uri>?) {
-        SessionHolder.requestStart(mode, uris)
+    private fun launchSession(mode: Mode, uris: List<Uri>?, remote: Boolean) {
+        SessionHolder.requestStart(mode, uris, remote)
         val i = Intent(this, ShareService::class.java).setAction(ShareService.ACTION_START)
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i)
         render()
@@ -179,7 +217,7 @@ class MainActivity : Activity() {
         if (screen != null && url != null) {
             if (qrFor != url) { qrBitmap = Qr.bitmap(url); qrFor = url }
             screen.qr.setImageBitmap(qrBitmap)
-            screen.link.text = url
+            screen.link.text = if (SessionHolder.remote) "Code ${SessionHolder.remoteCode} (tap to copy link)" else url
             screen.line.text = SessionHolder.logLines().firstOrNull() ?: "Waiting for the other phone…"
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
@@ -205,10 +243,12 @@ class MainActivity : Activity() {
         dialog?.dismiss()
         dialogFor = d.id
 
+        val text = if (d.id == SessionHolder.REMOTE_ID) "Someone online wants to connect.\n${d.userAgent}\n\nOnly allow a person you know."
+        else "Device at ${d.ip}\n${browserName(d.userAgent)}\n\nOnly allow a phone or computer you recognise."
         dialog = artDialog(
-            "Device at ${d.ip}\n${browserName(d.userAgent)}\n\nOnly allow a phone or computer you recognise.",
-            onAllow = { SessionHolder.registry?.allow(d.id) },
-            onDeny = { SessionHolder.registry?.deny(d.id) },
+            text,
+            onAllow = { SessionHolder.decide(d.id, true) },
+            onDeny = { SessionHolder.decide(d.id, false) },
         ).also { it.show() }
     }
 

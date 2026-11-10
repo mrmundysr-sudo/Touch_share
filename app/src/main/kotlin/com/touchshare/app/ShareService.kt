@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -18,6 +19,7 @@ import java.net.NetworkInterface
 /** Foreground service that keeps the share server alive while the app is in the background. */
 class ShareService : Service() {
     private var server: ShareServer? = null
+    private var remoteHost: RemoteHost? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(i: Intent?): IBinder? = null
@@ -38,7 +40,8 @@ class ShareService : Service() {
         if (server != null) return
         val req = SessionHolder.takeStartRequest()
         if (req == null) { stopSession(); return }
-        val (mode, uris) = req
+        val (mode, uris, remote) = req
+        if (remote) { startRemote(mode, uris); return }
         val ip = pickAddress()
         if (ip == null) {
             SessionHolder.fail("No Wi-Fi or hotspot network found. Turn on a hotspot, or join the same Wi-Fi as the other phone.")
@@ -80,12 +83,61 @@ class ShareService : Service() {
     }
 
     private fun decide(id: String?, allow: Boolean) {
-        val r = SessionHolder.registry ?: return
         if (id == null) return
-        if (allow) r.allow(id) else r.deny(id)
+        SessionHolder.decide(id, allow)
+    }
+
+    // ---- "Anywhere": the phone hosts a remote share through the hidden WebView ----
+    private fun startRemote(mode: Mode, uris: List<Uri>?) {
+        val url = RemoteConfig.serverUrl(applicationContext)
+        if (url == null) { SessionHolder.fail("Set the Anywhere server address first."); stopSession(); return }
+        lateinit var host: RemoteHost
+        host = RemoteHost(applicationContext, object : RemoteHost.Listener {
+            override fun onRoom(code: String, secret: String, link: String) {
+                SessionHolder.beginRemote(mode, link, code) { ok ->
+                    SessionHolder.removePending(SessionHolder.REMOTE_ID); cancel(approvalId(SessionHolder.REMOTE_ID))
+                    SessionHolder.addLog(if (ok) "Allowed. Connecting…" else "Denied.")
+                    host.decide(ok)
+                }
+                SessionHolder.addLog("Waiting for the other person…")
+            }
+            override fun onState(state: String, reason: String?, code: String?) {
+                when (state) {
+                    "connecting" -> SessionHolder.addLog("Making a direct connection…")
+                    "failed" -> {
+                        SessionHolder.addLog("Couldn't connect directly.")
+                        SessionHolder.fail("Couldn't connect directly. This can happen on some networks. Try the same Wi-Fi or hotspot.")
+                    }
+                    "closed" -> if (reason != "closed") SessionHolder.addLog("The connection was lost.")
+                }
+            }
+            override fun onApprove(code: String, typed: Boolean) {
+                val d = Device(SessionHolder.REMOTE_ID, "Someone online", "Check that their screen shows $code" + if (typed) ". They typed the code instead of scanning." else "")
+                SessionHolder.addPending(d)
+                if (SessionHolder.listener == null) notify(approvalId(d.id), approvalNotification(d))
+            }
+            override fun onProgress(dir: String, name: String, done: Long, total: Long) {
+                val pct = if (total > 0) (done * 100 / total).toInt() else 0
+                SessionHolder.setProgress(name, (if (dir == "send") "Sending " else "Receiving ") + "$name $pct%")
+            }
+            override fun onFileDone(dir: String, name: String, ok: Boolean) {
+                SessionHolder.addLog(if (!ok) "Failed $name" else if (dir == "send") "Sent $name" else "Received $name")
+            }
+            override fun onConnection(kind: String) {
+                SessionHolder.addLog(when (kind) { "same-network" -> "Connected: same network."; "internet-direct" -> "Connected directly across the internet."; else -> "Connected ($kind)." })
+            }
+            override fun onDeclined() { SessionHolder.addLog("Declined. Waiting for the other person…") }
+            override fun onRejected(reason: String) { SessionHolder.addLog("Turned away a visitor ($reason).") }
+            override fun onError(message: String) { SessionHolder.addLog("Error: $message"); SessionHolder.fail(message) }
+        })
+        remoteHost = host
+        acquireWakeLock()
+        host.start(mode, uris, url)
+        notify(NOTIF_SESSION, sessionNotification("Sharing from anywhere"))
     }
 
     private fun stopSession() {
+        remoteHost?.stop(); remoteHost = null
         server?.stop(); server = null
         wakeLock?.let { if (it.isHeld) it.release() }; wakeLock = null
         SessionHolder.end()
@@ -94,6 +146,7 @@ class ShareService : Service() {
     }
 
     override fun onDestroy() {
+        remoteHost?.stop(); remoteHost = null
         server?.stop(); server = null
         wakeLock?.let { if (it.isHeld) it.release() }
         if (SessionHolder.active) SessionHolder.end()
@@ -168,7 +221,7 @@ class ShareService : Service() {
     private fun approvalNotification(d: Device): Notification = builder(CH_APPROVAL)
         .setSmallIcon(android.R.drawable.stat_sys_warning)
         .setContentTitle("Allow this device?")
-        .setContentText("${d.ip} wants to connect to your Touch Share session")
+        .setContentText(if (d.id == SessionHolder.REMOTE_ID) "${d.ip} wants to connect. ${d.userAgent}" else "${d.ip} wants to connect to your Touch Share session")
         .setAutoCancel(true)
         .setContentIntent(openAppIntent())
         .addAction(android.R.drawable.ic_menu_add, "Allow", serviceIntent(ACTION_ALLOW, approvalId(d.id) + 1, d.id))
