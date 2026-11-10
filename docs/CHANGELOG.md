@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.4.4 (unreleased, branch `claude/touch-share-v1`)
+## 0.4.4 (branch `claude/touch-share-v1`)
+**Owner-verified on device (2026-11-10): iPhone (Chrome for iOS) to Android over home Wi-Fi now uploads the big WAV smoothly and fast, with no pause.**
 Owner tested 0.4.3 (form-POST chunks) on the same iPhone: still a pause of about 30 s per file, then it goes. That is the first chunk timing out (12 s), a second one timing out (20 s) and the page falling back to the plain upload. So the stall is not specific to the raw PUT body; the other phone receives each chunk but the iPhone browser never finishes receiving the reply. A raw-socket check of the real server shows the reply is complete and well formed (headers and body in one read, `Content-Length: 18`, then a clean close, 47 ms after a 1 MB chunk), so the server's reply is not malformed.
 - The page no longer depends on the chunk reply. Once a chunk's body has been sent it also asks `/upload/status` (which works on the iPhone) every 0.5 s; as soon as the other phone reports it has the chunk, the page cancels the unfinished request and sends the next chunk.
 - `/upload/status` keeps answering `{"done":true}` after an upload completes (so a missing final reply cannot leave the page waiting). The upload offset is now volatile for cross-thread reads.
