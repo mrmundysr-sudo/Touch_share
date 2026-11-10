@@ -78,6 +78,24 @@ try {
     await h.context().close(); await g.context().close(); await g3.context().close();
   }
 
+  // 1b. the guest shows its number BEFORE the host approves; the host's addresses are withheld until then
+  {
+    const h = await openPage(), g = await openPage();
+    const { code, secret } = await makeHost(h);
+    await h.evaluate(() => { host.opts.onApprove = ({ code }) => new Promise(r => { window.releaseApproval = r; window.askedCode = code; }); });
+    await makeGuest(g, code, secret);
+    await waitState(g, 'guest', 'verify');
+    const early = await Promise.all([h.evaluate(() => ({ v: host.verification, s: host.state })), g.evaluate(() => ({ v: guest.verification, s: guest.state, ice: guest._iceReceived || 0 }))]);
+    ok('guest shows the same number while the host is still deciding', early[0].v && early[0].v === early[1].v && early[0].s === 'approving' && early[1].s === 'verify', early[1].v);
+    await new Promise(r => setTimeout(r, 1500));
+    const still = await g.evaluate(() => ({ s: guest.state, ice: guest._iceReceived || 0 }));
+    ok('nothing connects and the host sends no network addresses before approval', still.s === 'verify' && still.ice === 0);
+    await h.evaluate(() => releaseApproval(true));
+    await waitState(g, 'guest', 'connected'); await waitState(h, 'host', 'connected');
+    ok('approving then connects both sides', true);
+    await h.context().close(); await g.context().close();
+  }
+
   // 4. connection dropped mid-transfer: sender notices and does not hang
   {
     const h = await openPage(), g = await openPage();

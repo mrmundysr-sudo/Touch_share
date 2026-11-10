@@ -24,6 +24,7 @@ try {
   const gctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 }), g = await gctx.newPage();
   await g.goto(`${guestBase}/r/${code}?ice=none#k=${secret}`);
   await g.waitForFunction(() => /Waiting for the other phone/.test(document.getElementById('status').innerText), null, { timeout: 10000 });
+  await g.waitForFunction(() => document.getElementById('vcode').textContent.length === 4, null, { timeout: 5000 });   // the number is there while the host is still deciding
   await g.screenshot({ path: out + '/guest_waiting.png' });
   await g.waitForFunction(() => /Connected\./.test(document.getElementById('status').innerText), null, { timeout: 20000 });
   const vc = await g.innerText('#vcode'), hv = await host.evaluate(() => host.verification);

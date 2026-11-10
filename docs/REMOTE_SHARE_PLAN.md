@@ -51,6 +51,9 @@ Built in `remote/`: matchmaker core (10 unit tests), Node dev server, shared pee
 - Deployment is by phone from the Cloudflare dashboard: see `remote/worker/DEPLOY.md`. Owner action needed: create the free Cloudflare account and connect the repository.
 - Not verified: the live deployment, Cloudflare dashboard wording, Workers Builds free-plan limits, and anything on real networks.
 
+## Owner test of the deployed Worker (2026-11-10)
+Owner deployed the Worker from the Cloudflare dashboard on a phone and reported it working. Tried: both phones on Wi-Fi, and Wi-Fi to mobile data; both connected after Allow, with matching verification numbers. Not yet reported: the connection-type line for each pairing, a file transfer each way, mobile data on both phones, other people's networks. Owner's feedback: the second phone only showed its number after the host tapped Allow, so the host could not compare first. Fixed (D-021, build 3afc6e9 plus the handshake change): the guest now shows the number while waiting; the host holds back its network addresses until approval. This also closes a privacy gap: before, an unapproved typed-code guest could read the host's addresses from the matchmaker. The live address could not be reached from the authoring environment (its network rules block it), so the live deployment is verified only by the owner's phones.
+
 ## Open decisions (resolved 2026-11-10)
 1. Where the signaling service lives: own Cloudflare Worker (recommended), PeerJS Cloud (no account, third-party dependency, bundled TURN to be disabled), or a small Node service on a server the owner already has.
 2. Android peer: hidden WebView running the shared script (recommended) or native WebRTC library (larger APK, separate code to maintain).

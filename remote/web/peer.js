@@ -98,10 +98,17 @@ export class RemotePeer extends Emitter {
   _newPc() {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers ?? DEFAULT_ICE, ...(this.opts.rtcConfig || {}) });
     this.pc = pc;
-    pc.onicecandidate = e => { if (e.candidate) this.signal.send({ type: 'ice', candidate: e.candidate.toJSON() }); };
+    this._heldIce = [];
+    this._holdIce = this.role === 'host';        // the host reveals its network addresses only once the person has approved
+    pc.onicecandidate = e => {
+      if (!e.candidate) return;
+      const msg = { type: 'ice', candidate: e.candidate.toJSON() };
+      if (this._holdIce) this._heldIce.push(msg); else this.signal.send(msg);
+    };
     pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState) && this.state === 'connected') this._lost('connection ' + pc.connectionState); };
     return pc;
   }
+  async _releaseIce() { this._holdIce = false; for (const m of this._heldIce.splice(0)) await this.signal.send(m); }
   async _addIce(c) {
     if (!this._remoteSet) { this._queuedIce.push(c); return; }
     try { await this.pc.addIceCandidate(c); } catch {}
@@ -136,6 +143,10 @@ export class RemotePeer extends Emitter {
       const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
       this.verification = await verificationCode(m.sdp, pc.localDescription.sdp);
       this._setState('approving', { code: this.verification });
+      // Send the answer right away, without any network addresses, so the guest can show the same number while the
+      // host decides. Nothing can connect until the host approves and the addresses are released.
+      const early = pc.localDescription.sdp.split(/\r?\n/).filter(l => !/^a=(candidate:|end-of-candidates)/.test(l)).join('\r\n');
+      await this.signal.send({ type: 'answer', sdp: early });
       const ok = this.opts.onApprove ? await this.opts.onApprove({ code: this.verification, typed }) : false;
       if (!ok) {
         await this.signal.deny({ type: 'denied', reason: 'declined' });
@@ -144,7 +155,8 @@ export class RemotePeer extends Emitter {
         this.emit('declined', {});
         return;
       }
-      await this.signal.send({ type: 'answer', sdp: pc.localDescription.sdp });
+      await this.signal.send({ type: 'approved' });
+      await this._releaseIce();
       await this._flushIce();
       this._setState('connecting');
       this._armTimeout();
@@ -165,14 +177,16 @@ export class RemotePeer extends Emitter {
     this._setState('offered');
   }
   async _onSignalGuest(m) {
-    if (m.type === 'ice') return this._addIce(m.candidate);
+    if (m.type === 'ice') { this._iceReceived = (this._iceReceived || 0) + 1; return this._addIce(m.candidate); }
     if (m.type === 'denied') { this._setState('denied', { reason: m.reason }); this.close(); return; }
-    if (m.type !== 'answer') return;
-    await this.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
-    this.verification = await verificationCode(this._offerSdp, m.sdp);
-    await this._flushIce();
-    this._setState('connecting', { code: this.verification });
-    this._armTimeout();
+    if (m.type === 'answer') {
+      await this.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
+      this.verification = await verificationCode(this._offerSdp, m.sdp);
+      await this._flushIce();
+      this._setState('verify', { code: this.verification });          // show the number while the host decides
+      return;
+    }
+    if (m.type === 'approved') { this._setState('connecting', { code: this.verification }); this._armTimeout(); }
   }
 
   // ---------- channel ----------

@@ -35,6 +35,7 @@ async function connect() {
     dbg('state ' + state + (reason ? ' (' + reason + ')' : ''));
     if (v) { $('vcode').textContent = v; $('verify').classList.remove('hide'); }
     if (state === 'offered') say('Waiting for the other phone to approve this device…');
+    if (state === 'verify') say('Waiting for the other phone to approve. Check that it shows the same number as below.');
     if (state === 'connecting') say('Approved. Making a direct connection…');
     if (state === 'connected') {
       say('Connected. Nothing goes through a server.'); $('xfer').classList.remove('hide');
