@@ -28,10 +28,17 @@ h1{font-size:1.1rem;margin:0 0 12px;color:var(--g);letter-spacing:.05em;text-tra
 a.f{display:block;padding:12px 14px;margin:8px 0;background:rgba(10,60,20,.55);border:1px solid rgba(57,255,20,.45);
  border-radius:12px;color:var(--t);text-decoration:none;word-break:break-word}
 a.f small{color:#8fd68a;display:block}
-progress{width:100%;accent-color:var(--g)}
+progress{-webkit-appearance:none;appearance:none;width:100%;height:12px;border:0;border-radius:6px;background:#12301a;overflow:hidden;display:block;margin-top:6px}
+progress::-webkit-progress-bar{background:#12301a;border-radius:6px}
+progress::-webkit-progress-value{background:linear-gradient(90deg,#1fb52a,#39ff14);border-radius:6px}
+progress::-moz-progress-bar{background:#39ff14;border-radius:6px}
 .row{margin:10px 0;font-size:.9rem;word-break:break-word}
-button,::file-selector-button{font-size:1rem;font-weight:700;color:#fff;padding:12px 18px;margin:8px 0;
- background:linear-gradient(#35d12f,#0c7a1c);border:2px solid #cfd8d4;border-radius:14px}
+button{-webkit-appearance:none;appearance:none;font-size:1rem;font-weight:700;color:#fff;text-shadow:0 1px 2px #000;
+ padding:12px 18px;margin:8px 0;background:linear-gradient(#35d12f,#0c7a1c);border:2px solid #cfd8d4;border-radius:14px}
+::file-selector-button{-webkit-appearance:none;appearance:none;font-size:1rem;font-weight:700;color:#fff;text-shadow:0 1px 2px #000;
+ padding:12px 18px;margin:8px 12px 8px 0;background:linear-gradient(#35d12f,#0c7a1c);border:2px solid #cfd8d4;border-radius:14px}
+::-webkit-file-upload-button{-webkit-appearance:none;appearance:none;font-size:1rem;font-weight:700;color:#fff;text-shadow:0 1px 2px #000;
+ padding:12px 18px;margin:8px 12px 8px 0;background:linear-gradient(#35d12f,#0c7a1c);border:2px solid #cfd8d4;border-radius:14px}
 input[type=file]{font-size:1rem;color:var(--t);max-width:100%}
 p{line-height:1.45}
 </style></head><body><div class="page">$body</div></body></html>"""
@@ -49,12 +56,14 @@ p{line-height:1.45}
 <p id="hint">If a transfer is interrupted it carries on by itself. If you close the page, choose the same files again and tap Upload to continue.</p>
 <div id="log"></div>
 <script>
-var T=${jsString(token)},CHUNK=2*1024*1024,queue=[],busy=false;
+var T=${jsString(token)},CHUNK=1024*1024,queue=[],busy=false;
 function q(p){return p+(p.indexOf('?')<0?'?':'&')+'t='+encodeURIComponent(T)}
 function req(m,u,body,onp,cb){
- var x=new XMLHttpRequest();x.open(m,q(u));
+ var x=new XMLHttpRequest(),fin=false;x.open(m,q(u));x.timeout=40000;
  if(onp)x.upload.onprogress=onp;
- x.onload=function(){cb(null,x)};x.onerror=function(){cb('net')};x.send(body||null);
+ function end(e){if(!fin){fin=true;cb(e,x)}}
+ x.onload=function(){end(null)};x.onerror=function(){end('network')};x.ontimeout=function(){end('timed out')};x.onabort=function(){end('aborted')};
+ x.send(body||null);
 }
 function js(x){try{return JSON.parse(x.responseText)}catch(e){return {}}}
 function put(k,v){try{localStorage.setItem(k,v)}catch(e){}}
@@ -65,22 +74,23 @@ function upload(file,row,pr,done){
  function label(t){row.firstChild.nodeValue=file.name+' '+t+' '}
  function fail(t){label('\u2717 '+t);pr.style.display='none';done()}
  function ok(){label('\u2713 sent');pr.style.display='none';del(key);done()}
- function retry(){tries++;if(tries>8)return fail('connection lost');label('(reconnecting\u2026)');setTimeout(resync,Math.min(1000*tries,5000))}
+ function retry(why){tries++;why=why||'unknown';if(tries>8)return fail('connection lost ('+why+')');label('(reconnecting\u2026 '+why+')');setTimeout(resync,Math.min(1000*tries,5000))}
+ function bad(e,x){return e?e:'HTTP '+x.status}
  function resync(){
   if(!id)return start();
   req('GET','/upload/status?id='+id,null,null,function(e,x){
-   if(e)return retry();
+   if(e)return retry(e);
    if(x.status==404){del(key);id=null;return start()}
-   if(x.status!=200)return retry();
+   if(x.status!=200)return retry(bad(e,x));
    offset=js(x).offset||0;send();
   });
  }
  function start(){
   req('POST','/upload/start?name='+encodeURIComponent(file.name)+'&size='+file.size,null,null,function(e,x){
-   if(e)return retry();
+   if(e)return retry(e);
    if(x.status==507)return fail('not enough space on the other phone');
    if(x.status==403)return fail('declined');
-   if(x.status!=200)return retry();
+   if(x.status!=200)return retry(bad(e,x));
    var j=js(x);id=j.id;offset=j.offset||0;put(key,id);
    if(j.done)return ok();
    send();
@@ -89,14 +99,14 @@ function upload(file,row,pr,done){
  function send(){
   var end=Math.min(offset+CHUNK,file.size);
   req('PUT','/upload/chunk?id='+id+'&offset='+offset,file.slice(offset,end),function(e){
-   if(e.lengthComputable)pr.value=(offset+e.loaded)/file.size;
+   if(e.lengthComputable){pr.value=(offset+e.loaded)/file.size;label(Math.round(100*(offset+e.loaded)/file.size)+'%')}
   },function(e,x){
-   if(e)return retry();
-   if(x.status==200){var j=js(x);tries=0;offset=j.offset;pr.value=offset/file.size;if(j.done)return ok();label('');return send()}
+   if(e)return retry(e);
+   if(x.status==200){var j=js(x);tries=0;offset=j.offset;pr.value=offset/file.size;if(j.done)return ok();return send()}
    if(x.status==409){offset=js(x).offset||0;return send()}
    if(x.status==404){del(key);id=null;offset=0;return start()}
    if(x.status==403)return fail('declined');
-   retry();
+   retry(bad(e,x));
   });
  }
  var saved=get(key);

@@ -21,6 +21,9 @@ class ShareServer(
     private val onEvent: (ShareEvent) -> Unit = {},
 ) : NanoHTTPD(port) {
 
+    /** NanoHTTPD's default 5 s read timeout kills uploads when a phone pauses mid-chunk, so allow much longer. */
+    override fun start() { start(SOCKET_TIMEOUT_MS, true) }
+
     private fun reply(status: Response.IStatus, mime: String, body: String) =
         newFixedLengthResponse(status, mime, body).also { harden(it) }
 
@@ -78,7 +81,9 @@ class ShareServer(
                 else -> reply(Status.NOT_FOUND, "text/plain", "Not found")
             }
         } catch (e: Exception) {
-            reply(Status.INTERNAL_ERROR, "text/plain", "Error")
+            onEvent(ShareEvent.Rejected("request failed: ${e.javaClass.simpleName}"))
+            // a half-read body leaves the connection unusable, so end it and let the client reconnect
+            reply(Status.INTERNAL_ERROR, "text/plain", "Error").also { if (path.startsWith("/upload")) it.addHeader("Connection", "close") }
         }
     }
 
@@ -219,7 +224,10 @@ class ShareServer(
             val off = session.parameters["offset"]?.firstOrNull()?.toLongOrNull()
                 ?: return json(Status.BAD_REQUEST, "{\"error\":\"bad offset\"}")
             val u = uploads[id] ?: return json(Status.NOT_FOUND, "{\"error\":\"unknown upload\"}")
-            if (tmp == null) return json(Status.BAD_REQUEST, "{\"error\":\"no data\"}")
+            if (tmp == null) {
+                onEvent(ShareEvent.Rejected("upload chunk had no data (content-length ${session.headers["content-length"]}, ${session.headers["transfer-encoding"] ?: "no transfer-encoding"})"))
+                return json(Status.BAD_REQUEST, "{\"error\":\"no data\"}")
+            }
             synchronized(u) {
                 if (off != u.offset) return json(Conflict, "{\"offset\":${u.offset}}")
                 val len = tmp.length()
@@ -286,6 +294,7 @@ class ShareServer(
     private companion object {
         const val COOKIE = "ts_dev"
         const val MAX_UPLOADS = 16
+        const val SOCKET_TIMEOUT_MS = 60_000
         const val MAX_CHUNK = 16L * 1024 * 1024
         fun st(code: Int, text: String) = object : Response.IStatus {
             override fun getRequestStatus() = code

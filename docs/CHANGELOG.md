@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1 (unreleased, branch `claude/touch-share-v1`)
+Fixes after the owner's first iPhone-to-Android upload test (uploads stalled at about 6% on both files; the iPhone page also showed unreadable buttons and an empty progress bar).
+- Server: socket read timeout raised from NanoHTTPD's 5 s to 60 s. Reproduced here: a sender that goes quiet for more than 5 s mid-chunk (for example while iOS reads a large file) got HTTP 500 and a broken connection. New regression test (sender pauses 6.5 s) passes; manual test with an 8 s pause returns 200.
+- Server: any failure while reading an upload now ends the connection cleanly and shows a "Blocked a request (...)" line on the host screen; a chunk with no body reports its content-length and transfer-encoding.
+- Page: chunks are 1 MB (was 2 MB), every request times out after 40 s and retries, the status line shows the percentage and the reason when reconnecting (network / timed out / HTTP code), and gives up with the reason after 8 tries.
+- Page styling for Safari: buttons use `-webkit-appearance:none` so their text is readable, the file picker button is styled for both `::file-selector-button` and `::-webkit-file-upload-button`, and the progress bar has explicit WebKit/Firefox styles.
+- Verified here: 30 core tests pass; real page in headless Chromium against the real server (dropped chunks recovered, closed-and-reopened page resumed, identical file); one-connection keep-alive test passed.
+- Not verified: real Safari on iOS (no WebKit available here). The stall at 6% is not proven to be this timeout; if it still happens, the page now says why and the host screen logs the cause.
+
 ## 0.4.0 (unreleased, branch `claude/touch-share-v1`)
 - Resumable downloads: server answers HTTP Range (single ranges, suffix ranges, 416, If-Range, ETag, Accept-Ranges, HEAD). The Android file source seeks straight to the offset.
 - Resumable uploads: new `/upload/start`, `/upload/status`, `/upload/chunk` protocol; the web page sends files in 2 MB chunks, retries with back-off, resyncs after a drop, and remembers the upload so choosing the same file after closing the page continues from where it stopped. Bytes are written straight to Downloads/TouchShare (no temp copy); free-space check (HTTP 507); partial files are removed if the session stops. Old one-shot `/upload` still works.

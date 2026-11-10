@@ -183,4 +183,22 @@ class ResumableUploadTest {
         }
         assertTrue(ev.any { it is ShareEvent.UploadProgress && it.received == 10L && it.total == 20L })
     }
+
+    @Test fun aPhoneThatPausesMidChunkIsNotCutOff() = run { base, sink ->
+        // regression: NanoHTTPD's default 5 s read timeout dropped uploads when the sender stalled (e.g. reading a big file)
+        val id = id(start(base, "slow.bin", 1000))
+        val port = URL(base).port
+        val body = ByteArray(1000) { 7 }
+        java.net.Socket("127.0.0.1", port).use { sock ->
+            sock.soTimeout = 20_000
+            val out = sock.getOutputStream()
+            out.write("PUT /upload/chunk?t=secret&id=$id&offset=0 HTTP/1.1\r\nHost: x\r\nContent-Length: 1000\r\n\r\n".toByteArray())
+            out.write(body, 0, 400); out.flush()
+            Thread.sleep(6_500)                                   // longer than the old 5 s limit
+            out.write(body, 400, 600); out.flush()
+            val reply = sock.getInputStream().bufferedReader().readLine()
+            assertTrue(reply.contains("200"), "got: $reply")
+        }
+        assertEquals(1000, sink.done["slow.bin"]!!.size)
+    }
 }
