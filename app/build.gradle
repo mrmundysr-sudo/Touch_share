@@ -2,11 +2,17 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
 }
+// Address of the Anywhere matchmaker, supplied at build time (GitHub Actions variable or secret ANYWHERE_SERVER, or
+// -PanywhereServer=...). It is deliberately not written in the source, which lives in a public repository.
+def anywhereServer = (System.getenv('ANYWHERE_SERVER') ?: (project.findProperty('anywhereServer') ?: '')).toString().trim()
+
 android {
     namespace 'com.touchshare.app'
     compileSdk 34
+    buildFeatures { buildConfig true }
     defaultConfig {
         applicationId "com.touchshare.app"
+        buildConfigField 'String', 'ANYWHERE_SERVER', '"' + anywhereServer.replace('\\', '\\\\').replace('"', '\\"') + '"'
         minSdk 24
         targetSdk 34
         versionCode 8

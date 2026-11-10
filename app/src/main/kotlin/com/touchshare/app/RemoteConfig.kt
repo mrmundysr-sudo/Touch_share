@@ -3,12 +3,14 @@ package com.touchshare.app
 import android.content.Context
 import android.net.Uri
 
-/** Where the "Anywhere" matchmaker lives. Kept in app settings, not in the code, because the repository is public. */
+/** Where the "Anywhere" matchmaker lives. Comes from the build (CI variable) or an in-app setting, never from the source code. */
 object RemoteConfig {
     private const val PREFS = "touchshare"
     private const val KEY = "remote_server"
 
-    fun serverUrl(ctx: Context): String? = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
+    /** An address saved in the app wins; otherwise the one baked in at build time (BuildConfig.ANYWHERE_SERVER); otherwise none. */
+    fun serverUrl(ctx: Context): String? =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null) ?: normalize(BuildConfig.ANYWHERE_SERVER)
     fun setServerUrl(ctx: Context, url: String) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, url).apply() }
 
     /** Accepts what a person pastes ("https://name.account.workers.dev", maybe with a path) and returns "https://host", or null. */

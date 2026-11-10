@@ -6,85 +6,246 @@
       "key": "home",
       "name": "Home",
       "purpose": "Opening screen. Two big choices: Send files or Receive files.",
-      "size": { "w": 1080, "h": 1920 },
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
       "notes": "Portrait. Paint everything you want on screen, including the app name and the words on the two buttons. Mark the two buttons as tap areas.",
       "assets": [
-        { "key": "clean", "slot": "clean", "name": "home.png", "description": "The full Home screen, finished, with both buttons in place." }
+        {
+          "key": "clean",
+          "slot": "clean",
+          "name": "home.png",
+          "description": "The full Home screen, finished, with both buttons in place."
+        }
       ],
       "regions": [
-        { "label": "send_button", "type": "box", "action": "tap to choose files and start sending" },
-        { "label": "receive_button", "type": "box", "action": "tap to start receiving" }
+        {
+          "label": "send_button",
+          "type": "box",
+          "action": "tap to choose files and start sending"
+        },
+        {
+          "label": "receive_button",
+          "type": "box",
+          "action": "tap to start receiving"
+        }
       ]
     },
     {
       "key": "sending",
       "name": "Sending",
       "purpose": "Shown while this phone is sharing files. A QR code for the other phone to scan, and a list of what has been sent.",
-      "size": { "w": 1080, "h": 1920 },
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
       "notes": "Leave the QR area as a plain white square (at least 640 px wide) and the list area empty. The app draws the QR code, the link text and the list of files into those areas. Paint the Stop button with its words.",
       "assets": [
-        { "key": "clean", "slot": "clean", "name": "sending.png", "description": "The full Sending screen with the QR square, list area and Stop button in place, but no QR code, link text or file names." }
+        {
+          "key": "clean",
+          "slot": "clean",
+          "name": "sending.png",
+          "description": "The full Sending screen with the QR square, list area and Stop button in place, but no QR code, link text or file names."
+        }
       ],
       "regions": [
-        { "label": "qr_square", "type": "box", "action": "the app draws the QR code here (keep it plain white)" },
-        { "label": "link_area", "type": "box", "action": "the app writes the web link here" },
-        { "label": "file_list", "type": "box", "action": "the app lists the files being sent and their progress here" },
-        { "label": "stop_button", "type": "box", "action": "tap to stop sharing" }
+        {
+          "label": "qr_square",
+          "type": "box",
+          "action": "the app draws the QR code here (keep it plain white)"
+        },
+        {
+          "label": "link_area",
+          "type": "box",
+          "action": "the app writes the web link here"
+        },
+        {
+          "label": "file_list",
+          "type": "box",
+          "action": "the app lists the files being sent and their progress here"
+        },
+        {
+          "label": "stop_button",
+          "type": "box",
+          "action": "tap to stop sharing"
+        }
       ]
     },
     {
       "key": "receiving",
       "name": "Receiving",
       "purpose": "Shown while this phone is waiting for files. A QR code for the sender to scan, and a list of what has arrived.",
-      "size": { "w": 1080, "h": 1920 },
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
       "notes": "Same idea as Sending but give it its own look so the two are easy to tell apart. Plain white QR square (at least 640 px), empty list area, Stop button with its words.",
       "assets": [
-        { "key": "clean", "slot": "clean", "name": "receiving.png", "description": "The full Receiving screen with the QR square, list area and Stop button in place, but no QR code, link text or file names." }
+        {
+          "key": "clean",
+          "slot": "clean",
+          "name": "receiving.png",
+          "description": "The full Receiving screen with the QR square, list area and Stop button in place, but no QR code, link text or file names."
+        }
       ],
       "regions": [
-        { "label": "qr_square", "type": "box", "action": "the app draws the QR code here (keep it plain white)" },
-        { "label": "link_area", "type": "box", "action": "the app writes the web link here" },
-        { "label": "file_list", "type": "box", "action": "the app lists the files received here" },
-        { "label": "stop_button", "type": "box", "action": "tap to stop receiving" }
+        {
+          "label": "qr_square",
+          "type": "box",
+          "action": "the app draws the QR code here (keep it plain white)"
+        },
+        {
+          "label": "link_area",
+          "type": "box",
+          "action": "the app writes the web link here"
+        },
+        {
+          "label": "file_list",
+          "type": "box",
+          "action": "the app lists the files received here"
+        },
+        {
+          "label": "stop_button",
+          "type": "box",
+          "action": "tap to stop receiving"
+        }
       ]
     },
     {
       "key": "allow_device",
       "name": "Allow device",
       "purpose": "A pop-up asking the host to approve a new phone or browser before it can transfer anything.",
-      "size": { "w": 1080, "h": 1920 },
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
       "notes": "Just the pop-up box on a transparent background (it floats over the other screens). Leave space for a short message that the app writes. Paint the Allow and Deny buttons with their words.",
       "assets": [
-        { "key": "clean", "slot": "clean", "name": "allow_popup.png", "description": "The pop-up box with Allow and Deny buttons, transparent around it, no message text." }
+        {
+          "key": "clean",
+          "slot": "clean",
+          "name": "allow_popup.png",
+          "description": "The pop-up box with Allow and Deny buttons, transparent around it, no message text."
+        }
       ],
       "regions": [
-        { "label": "message_area", "type": "box", "action": "the app writes who is asking to connect here" },
-        { "label": "allow_button", "type": "box", "action": "tap to let this device connect" },
-        { "label": "deny_button", "type": "box", "action": "tap to refuse" }
+        {
+          "label": "message_area",
+          "type": "box",
+          "action": "the app writes who is asking to connect here"
+        },
+        {
+          "label": "allow_button",
+          "type": "box",
+          "action": "tap to let this device connect"
+        },
+        {
+          "label": "deny_button",
+          "type": "box",
+          "action": "tap to refuse"
+        }
+      ]
+    },
+    {
+      "key": "choose_mode",
+      "name": "Choose how to share",
+      "purpose": "A pop-up shown after tapping Send or Receive: share on the same Wi-Fi or hotspot, or from anywhere (beta).",
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
+      "notes": "Just the pop-up box on a transparent background, like the Allow pop-up. Paint the words on the buttons. Leave a short title area (the app writes Send how? or Receive how?). The third item is a small, quiet link-style button for changing the server address.",
+      "assets": [
+        {
+          "key": "clean",
+          "slot": "clean",
+          "name": "choose_popup.png",
+          "description": "The pop-up box with the two big buttons and the small address button, transparent around it, no title text."
+        }
+      ],
+      "regions": [
+        {
+          "label": "title_area",
+          "type": "box",
+          "action": "the app writes 'Send how?' or 'Receive how?' here"
+        },
+        {
+          "label": "same_wifi_button",
+          "type": "box",
+          "action": "tap to share on the same Wi-Fi or hotspot (the original way)"
+        },
+        {
+          "label": "anywhere_button",
+          "type": "box",
+          "action": "tap to share from anywhere (beta)"
+        },
+        {
+          "label": "server_address_button",
+          "type": "box",
+          "action": "tap to change the address of the Anywhere matchmaker"
+        }
       ]
     },
     {
       "key": "web_page",
       "name": "Web page",
       "purpose": "The page the OTHER phone sees in its browser, either to download the files being sent or to choose files to upload. One look is shared by both.",
-      "size": { "w": 1080, "h": 1920 },
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
       "notes": "This is a web page, not an app screen, so keep the files small (a few hundred KB each at most). The page text, file names, buttons and progress bars are drawn by code, so these files are only the decoration.",
       "assets": [
-        { "key": "clean", "slot": "clean", "name": "web_mockup.png", "description": "A picture of how the page should look, with the header and background. Placeholder text is fine." },
-        { "key": "header", "slot": "other", "name": "web_header.png", "description": "The banner or logo strip across the top of the page." },
-        { "key": "background", "slot": "other", "name": "web_background.png", "description": "The page background. It can be a small tile or a plain gradient." }
+        {
+          "key": "clean",
+          "slot": "clean",
+          "name": "web_mockup.png",
+          "description": "A picture of how the page should look, with the header and background. Placeholder text is fine."
+        },
+        {
+          "key": "header",
+          "slot": "other",
+          "name": "web_header.png",
+          "description": "The banner or logo strip across the top of the page."
+        },
+        {
+          "key": "background",
+          "slot": "other",
+          "name": "web_background.png",
+          "description": "The page background. It can be a small tile or a plain gradient."
+        }
       ]
     },
     {
       "key": "app_icon",
       "name": "App icon",
       "purpose": "The icon on the phone's home screen.",
-      "size": { "w": 1024, "h": 1024 },
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
       "notes": "Android crops icons into a circle or rounded square, so keep the important art inside the middle two thirds. Two layers so Android can animate and shape it.",
       "assets": [
-        { "key": "foreground", "slot": "other", "name": "icon_foreground.png", "description": "The icon art on a transparent background, kept inside the middle two thirds." },
-        { "key": "background", "slot": "other", "name": "icon_background.png", "description": "The icon background, edge to edge, no transparency." },
-        { "key": "clean", "slot": "clean", "name": "icon_preview.png", "description": "What the finished icon looks like.", "required": false }
+        {
+          "key": "foreground",
+          "slot": "other",
+          "name": "icon_foreground.png",
+          "description": "The icon art on a transparent background, kept inside the middle two thirds."
+        },
+        {
+          "key": "background",
+          "slot": "other",
+          "name": "icon_background.png",
+          "description": "The icon background, edge to edge, no transparency."
+        },
+        {
+          "key": "clean",
+          "slot": "clean",
+          "name": "icon_preview.png",
+          "description": "What the finished icon looks like.",
+          "required": false
+        }
       ]
     }
   ]

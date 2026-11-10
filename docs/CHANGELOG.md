@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (branch `claude/touch-share-remote`)
+- Anywhere (beta) in the app, first build: Send or Receive now asks "Same Wi-Fi or hotspot" or "Anywhere (beta)". Anywhere shows the same QR/link screens, asks for the matchmaker address once (setting, filled from the clipboard), and runs the shared peer script in a hidden WebView. New browser test for the WebView script against the real guest page (8 checks pass). Not yet compiled or run on a phone.
+- The Anywhere server address is now supplied at build time from the GitHub variable/secret `ANYWHERE_SERVER` (D-023); no paste step once it is set. The first Android compile of the Anywhere code passed in CI (run 21).
+- visual/TouchShare_needs.json gains a "Choose how to share" page for the themed chooser.
+
 ## Unreleased
 - Remote share handshake change (D-021), from owner testing on two phones: the guest page shows the verification number while the host is still deciding; the host withholds its own network addresses until it approves and ignores the guest's until then. New browser checks: same number shown before approval, nothing connects and no addresses reach the guest before approval. 16 browser-to-browser checks and 14 page checks pass against the Node server and a local Cloudflare runtime (3 fresh runs). Two intermittent test failures (one page test, one Worker-mode check) occurred once each and did not reproduce in repeated runs; cause unknown.
 - Remote share slice 2 (built, not yet deployed): Cloudflare Worker (`remote/worker`, Durable Object matchmaker + static pages), phone-only deployment guide (`remote/worker/DEPLOY.md`), new host page (`/host.html`) with QR, approval pop-up and file transfer, connection-type report on both pages, atomic turn-away on the matchmaker (fixes a race), bundled QR library (MIT). 11 matchmaker unit tests, 13 browser-to-browser checks and 14 page checks pass against both the Node server and a local Cloudflare runtime. One earlier page-test failure could not be reproduced in later runs.

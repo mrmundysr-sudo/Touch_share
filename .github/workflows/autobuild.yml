@@ -22,6 +22,9 @@ jobs:
       - name: Remote share signaling tests
         run: node --test remote/test/core.test.mjs
       - name: Debug APK
+        env:
+          # the Anywhere matchmaker address: set it once as a repository variable (or secret) named ANYWHERE_SERVER
+          ANYWHERE_SERVER: ${{ secrets.ANYWHERE_SERVER || vars.ANYWHERE_SERVER }}
         run: gradle :app:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
