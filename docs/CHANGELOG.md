@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.3 (unreleased, branch `claude/touch-share-v1`)
+Owner tested 0.4.2 on an iPhone (Chrome for iOS, iOS 26.5, WebKit) to an Android host over home Wi-Fi. The troubleshooting log showed: `POST /upload/start` fine (0.3 s); the first `PUT /upload/chunk` body was sent in 51 ms but its reply never completed (XHR readyState 3, timed out after 20 s); a following `GET /upload/status` was fine (0.14 s). After the timeout the transfer carried on and a 41 MB WAV plus PNGs arrived intact. The plain single-request form POST upload had worked reliably, including the 41 MB file. So the stall is specific to the raw-body PUT chunk request on iOS (cause inside WebKit or our reply is not proven).
+- Chunks are now sent as form POSTs (`multipart/form-data`, field `chunk`), the same kind of request as the reliable plain upload. The server accepts both POST and the old raw PUT. Resume, status and cancel are unchanged.
+- First chunk times out after 12 s (later chunks 20 s) so a stall costs less before the retry or the plain-upload fallback.
+- Verified here: 33 core tests (new: form-POST chunk assembly, duplicate refusal, resume); real page in headless Chromium: dropped chunks recover and resume, closed-and-reopened page resumes at 1 MB, a chunk that never gets answered falls back to the plain upload after 41 s, files identical.
+- Not verified: real iOS Safari/Chrome. If the first chunk still stalls, the Details panel will show it.
+
 ## 0.4.2 (unreleased, branch `claude/touch-share-v1`)
 Second round after the owner retried iPhone to Android with 0.4.1: the upload still stopped after the first chunk (about 5%), with no percentage text and no error on the iPhone page, so the 5 s timeout fix was not the (only) cause. The real cause is not yet proven; this build removes suspects, adds evidence and adds a way through.
 - Upload API replies now carry `Connection: close`, so every request uses a fresh connection (rules out browser keep-alive reuse).

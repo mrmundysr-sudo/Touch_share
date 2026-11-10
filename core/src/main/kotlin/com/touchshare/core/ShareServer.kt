@@ -77,7 +77,7 @@ class ShareServer(
                 mode == Mode.RECEIVE && session.method == Method.POST && path == "/upload" -> upload(session)
                 mode == Mode.RECEIVE && session.method == Method.POST && path == "/upload/start" -> uploadStart(session)
                 mode == Mode.RECEIVE && session.method == Method.GET && path == "/upload/status" -> uploadStatus(session)
-                mode == Mode.RECEIVE && session.method == Method.PUT && path == "/upload/chunk" -> uploadChunk(session)
+                mode == Mode.RECEIVE && (session.method == Method.PUT || session.method == Method.POST) && path == "/upload/chunk" -> uploadChunk(session)
                 mode == Mode.RECEIVE && session.method == Method.POST && path == "/upload/cancel" -> uploadCancel(session)
                 else -> reply(Status.NOT_FOUND, "text/plain", "Not found")
             }
@@ -228,7 +228,8 @@ class ShareServer(
         }
         val files = HashMap<String, String>()
         session.parseBody(files)                       // always read the body so the connection stays usable
-        val tmp = files["content"]?.let { File(it) }
+        // a form POST (field "chunk") is what the web page sends; a raw PUT body is still accepted
+        val tmp = (files["chunk"] ?: files["content"])?.let { File(it) }
         try {
             val id = session.parameters["id"]?.firstOrNull() ?: ""
             val off = session.parameters["offset"]?.firstOrNull()?.toLongOrNull()

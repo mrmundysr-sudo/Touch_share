@@ -222,4 +222,23 @@ class ResumableUploadTest {
             assertTrue(text.lowercase().contains("connection: close"), text)
         }
     }
+
+    private fun formChunk(base: String, id: String, off: Int, data: ByteArray): Http {
+        val b = "----tschunk"
+        val head = "--$b\r\nContent-Disposition: form-data; name=\"chunk\"; filename=\"chunk\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+        val body = head.toByteArray() + data + "\r\n--$b--\r\n".toByteArray()
+        return call("POST", "$base/upload/chunk?t=secret&id=$id&offset=$off", mapOf("Content-Type" to "multipart/form-data; boundary=$b"), body)
+    }
+
+    @Test fun chunksSentAsFormPostsAreAssembledAndResumable() = run { base, sink ->
+        val payload = ByteArray(5000) { (it * 7 % 256).toByte() }
+        val id = id(start(base, "form.bin", payload.size))
+        assertEquals(200, formChunk(base, id, 0, payload.copyOfRange(0, 2000)).code)
+        assertEquals(409, formChunk(base, id, 0, payload.copyOfRange(0, 2000)).code)           // duplicate refused with real offset
+        assertTrue(call("GET", "$base/upload/status?t=secret&id=$id").text.contains("\"offset\":2000"))
+        assertEquals(200, formChunk(base, id, 2000, payload.copyOfRange(2000, 4000)).code)
+        val last = formChunk(base, id, 4000, payload.copyOfRange(4000, 5000))
+        assertTrue(last.text.contains("\"done\":true"))
+        assertContentEquals(payload, sink.done["form.bin"])
+    }
 }
