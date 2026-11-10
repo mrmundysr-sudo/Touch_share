@@ -241,4 +241,14 @@ class ResumableUploadTest {
         assertTrue(last.text.contains("\"done\":true"))
         assertContentEquals(payload, sink.done["form.bin"])
     }
+
+    @Test fun statusKeepsAnsweringAfterTheUploadFinishes() = run { base, sink ->
+        val id = id(start(base, "fin.bin", 10))
+        assertTrue(call("GET", "$base/upload/status?t=secret&id=$id").text.contains("\"offset\":0"))
+        assertEquals(200, chunk(base, id, 0, ByteArray(10)).code)
+        // a phone that never received the final reply can still learn the file is complete
+        val st = call("GET", "$base/upload/status?t=secret&id=$id")
+        assertEquals(200, st.code); assertTrue(st.text.contains("\"done\":true")); assertTrue(st.text.contains("\"offset\":10"))
+        assertEquals(10, sink.done["fin.bin"]!!.size)
+    }
 }

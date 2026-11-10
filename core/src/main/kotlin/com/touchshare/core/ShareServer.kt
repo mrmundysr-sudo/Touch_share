@@ -21,6 +21,15 @@ class ShareServer(
     private val onEvent: (ShareEvent) -> Unit = {},
 ) : NanoHTTPD(port) {
 
+    init {
+        // send each reply immediately instead of waiting to batch it (headers and body are written separately)
+        setServerSocketFactory(ServerSocketFactory {
+            object : java.net.ServerSocket() {
+                override fun accept(): java.net.Socket = super.accept().also { it.tcpNoDelay = true }
+            }
+        })
+    }
+
     /** NanoHTTPD's default 5 s read timeout kills uploads when a phone pauses mid-chunk, so allow much longer. */
     override fun start() { start(SOCKET_TIMEOUT_MS, true) }
 
@@ -179,9 +188,10 @@ class ShareServer(
     }
 
     // ---- resumable uploads: start, then PUT sequential chunks, ask status to resync after a drop ----
-    private class UploadState(val name: String, val size: Long, val upload: IncomingUpload) { var offset = 0L }
+    private class UploadState(val name: String, val size: Long, val upload: IncomingUpload) { @Volatile var offset = 0L }
 
     private val uploads = java.util.concurrent.ConcurrentHashMap<String, UploadState>()
+    private val finished = java.util.concurrent.ConcurrentHashMap<String, Long>()   // id -> size, so a late status check still says "done"
 
     /** Upload API replies close the connection: every request gets a fresh one, which sidesteps browser keep-alive quirks. */
     private fun json(status: Response.IStatus, body: String) =
@@ -216,8 +226,12 @@ class ShareServer(
     }
 
     private fun uploadStatus(session: IHTTPSession): Response {
-        val u = uploads[session.parameters["id"]?.firstOrNull() ?: ""]
-            ?: return json(Status.NOT_FOUND, "{\"error\":\"unknown upload\"}")
+        val id = session.parameters["id"]?.firstOrNull() ?: ""
+        val u = uploads[id]
+        if (u == null) {
+            val size = finished[id] ?: return json(Status.NOT_FOUND, "{\"error\":\"unknown upload\"}")
+            return json(Status.OK, "{\"offset\":$size,\"size\":$size,\"done\":true}")
+        }
         return json(Status.OK, "{\"offset\":${u.offset},\"size\":${u.size}}")
     }
 
@@ -264,7 +278,7 @@ class ShareServer(
                         onEvent(ShareEvent.Failed(u.name, e.message ?: "save failed"))
                         return json(Status.INTERNAL_ERROR, "{\"error\":\"save failed\"}")
                     }
-                    uploads.remove(id)
+                    uploads.remove(id); finished[id] = u.size
                     onEvent(ShareEvent.Uploaded(u.name, saved, u.size))
                     return json(Status.OK, "{\"offset\":${u.offset},\"done\":true,\"savedAs\":${jstr(saved)}}")
                 }
@@ -280,7 +294,7 @@ class ShareServer(
         super.stop()
         // a session that ends mid-upload leaves nothing half-written behind
         uploads.values.forEach { runCatching { it.upload.abort() } }
-        uploads.clear()
+        uploads.clear(); finished.clear()
     }
 
     private fun upload(session: IHTTPSession): Response {

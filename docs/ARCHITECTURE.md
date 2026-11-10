@@ -43,6 +43,7 @@ Two Gradle modules so the logic is testable without an emulator.
 - Uploads: `POST /upload/start?name&size` -> `{id, offset}`; `POST /upload/chunk?id&offset` as a form (field `chunk`; a raw `PUT` body is also accepted) (409 + current offset if out of order; `done` when complete); `GET /upload/status?id` -> `{offset, size}`. Chunks are written in order through `FileSink.begin()` -> `IncomingUpload` (write/finish/abort). Android's sink writes to a pending MediaStore item and publishes it on finish. Chunks are 1 MB from the page (server accepts up to 16 MB). Socket read timeout is 60 s. Limits: 16 chunk MB max, 16 concurrent uploads, free-space check.
 - The page stores the upload id in localStorage (key = token + file name/size/modified) so the same file resumes after the page is closed, as long as the session is still running.
 
+- Chunk progress on the page: after sending a chunk it also polls `/upload/status` and carries on as soon as the server reports the chunk received, so a reply that never reaches the browser (seen on iOS) does not stall the upload. Finished uploads stay answerable (`done:true`).
 - Upload API extras: `POST /upload/cancel?id` aborts a partial; all upload API replies send `Connection: close`. The page falls back to the plain `POST /upload` after two silent stalls and keeps a troubleshooting log in a collapsible "Details" panel.
 
 ## Known limits

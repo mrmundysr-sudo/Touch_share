@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.4 (unreleased, branch `claude/touch-share-v1`)
+Owner tested 0.4.3 (form-POST chunks) on the same iPhone: still a pause of about 30 s per file, then it goes. That is the first chunk timing out (12 s), a second one timing out (20 s) and the page falling back to the plain upload. So the stall is not specific to the raw PUT body; the other phone receives each chunk but the iPhone browser never finishes receiving the reply. A raw-socket check of the real server shows the reply is complete and well formed (headers and body in one read, `Content-Length: 18`, then a clean close, 47 ms after a 1 MB chunk), so the server's reply is not malformed.
+- The page no longer depends on the chunk reply. Once a chunk's body has been sent it also asks `/upload/status` (which works on the iPhone) every 0.5 s; as soon as the other phone reports it has the chunk, the page cancels the unfinished request and sends the next chunk.
+- `/upload/status` keeps answering `{"done":true}` after an upload completes (so a missing final reply cannot leave the page waiting). The upload offset is now volatile for cross-thread reads.
+- Server sockets use TCP_NODELAY so replies are sent immediately (low-risk hardening; effect on the stall not proven).
+- Verified here: 34 core tests; in headless Chromium behind a proxy that lets every chunk reach the server but swallows all 7 chunk replies (the iPhone symptom), the 7 MB file completed in 4.3 s, no fallback, identical file. Dropped-chunk recovery and close/reopen resume still pass.
+- Not verified: real iOS. If this does not clear the pause, the Details panel will show whether the status check also fails.
+
 ## 0.4.3 (unreleased, branch `claude/touch-share-v1`)
 Owner tested 0.4.2 on an iPhone (Chrome for iOS, iOS 26.5, WebKit) to an Android host over home Wi-Fi. The troubleshooting log showed: `POST /upload/start` fine (0.3 s); the first `PUT /upload/chunk` body was sent in 51 ms but its reply never completed (XHR readyState 3, timed out after 20 s); a following `GET /upload/status` was fine (0.14 s). After the timeout the transfer carried on and a 41 MB WAV plus PNGs arrived intact. The plain single-request form POST upload had worked reliably, including the 41 MB file. So the stall is specific to the raw-body PUT chunk request on iOS (cause inside WebKit or our reply is not proven).
 - Chunks are now sent as form POSTs (`multipart/form-data`, field `chunk`), the same kind of request as the reliable plain upload. The server accepts both POST and the old raw PUT. Resume, status and cancel are unchanged.

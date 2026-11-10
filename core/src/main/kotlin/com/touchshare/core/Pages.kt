@@ -63,16 +63,17 @@ var T=${jsString(token)},CHUNK=1024*1024,queue=[],busy=false,t0=Date.now();
 function dbg(m){var d=document.getElementById('dbg');if(!d)return;var s=((Date.now()-t0)/1000).toFixed(1);d.textContent=(s+'s '+m+'\n'+d.textContent).slice(0,4000)}
 dbg('page ready. '+navigator.userAgent);
 function q(p){return p+(p.indexOf('?')<0?'?':'&')+'t='+encodeURIComponent(T)}
-function req(m,u,body,onp,cb,tmo){
+function req(m,u,body,onp,cb,tmo,onsent){
  var x=new XMLHttpRequest(),fin=false,st=Date.now(),seen=false,tag=m+' '+u.split('?')[0]+(u.indexOf('offset=')>=0?' @'+u.split('offset=')[1]:'');
  x.open(m,q(u));x.timeout=tmo||20000;
  dbg('> '+tag+(body&&body.size?' ('+body.size+' B)':(body?' (form)':'')));
  var w=setTimeout(function(){if(!fin)dbg('  still waiting after 10 s (readyState '+x.readyState+')')},10000);
  x.upload.onprogress=function(e){if(!seen){seen=true;dbg('  upload progress events are arriving')}if(onp)onp(e)};
- x.upload.onload=function(){dbg('  body sent in '+(Date.now()-st)+' ms')};
+ x.upload.onload=function(){dbg('  body sent in '+(Date.now()-st)+' ms');if(onsent)onsent()};
  function end(e){if(!fin){fin=true;clearTimeout(w);dbg('< '+tag+' '+(e?'ERR '+e:'HTTP '+x.status)+' after '+(Date.now()-st)+' ms');cb(e,x)}}
  x.onload=function(){end(null)};x.onerror=function(){end('network')};x.ontimeout=function(){end('timed out')};x.onabort=function(){end('aborted')};
  x.send(body||null);
+ return x;
 }
 function js(x){try{return JSON.parse(x.responseText)}catch(e){return {}}}
 function put(k,v){try{localStorage.setItem(k,v)}catch(e){}}
@@ -120,18 +121,43 @@ function upload(file,row,pr,done){
   },10000);
  }
  function send(){
-  var end=Math.min(offset+CHUNK,file.size);
-  var fd=new FormData();fd.append('chunk',file.slice(offset,end),'chunk');   /* same kind of request as the plain upload, which is reliable on iPhones */
-  req('POST','/upload/chunk?id='+id+'&offset='+offset,fd,function(e){
-   if(e.lengthComputable){pr.value=(offset+e.loaded)/file.size;label(Math.round(100*(offset+e.loaded)/file.size)+'%')}
+  var from=offset,end=Math.min(offset+CHUNK,file.size),settled=false,watch=null,xhr=null;
+  function advance(j,kill){
+   if(settled)return;settled=true;clearTimeout(watch);          /* mark done first: cancelling the request fires its error handler */
+   if(kill){try{xhr.abort()}catch(_){}}
+   tries=0;stalls=0;offset=j.offset;pr.value=offset/file.size;
+   if(j.done||offset>=file.size)return ok();
+   send();
+  }
+  function stop(){settled=true;clearTimeout(watch)}
+  /* Some phones never finish receiving the reply to a chunk even though the other phone got it,
+     so once the chunk is sent, also ask the other phone how much it has and carry on from its answer. */
+  function watchServer(){
+   watch=setTimeout(function(){
+    if(settled)return;
+    req('GET','/upload/status?id='+id,null,null,function(e,x){
+     if(settled)return;
+     if(!e&&x.status==200){
+      var j=js(x);
+      if(j.done||j.offset>=end){dbg('  the other phone already has this chunk; carrying on');return advance({offset:j.offset,done:!!j.done},true)}
+     }
+     watchServer();
+    },6000);
+   },500);
+  }
+  var fd=new FormData();fd.append('chunk',file.slice(from,end),'chunk');   /* same kind of request as the plain upload */
+  xhr=req('POST','/upload/chunk?id='+id+'&offset='+from,fd,function(e){
+   if(e.lengthComputable){pr.value=(from+e.loaded)/file.size;label(Math.round(100*(from+e.loaded)/file.size)+'%')}
   },function(e,x){
-   if(e)return retry(e);
-   if(x.status==200){var j=js(x);tries=0;stalls=0;offset=j.offset;pr.value=offset/file.size;if(j.done)return ok();return send()}
+   if(settled)return;
+   if(e){stop();return retry(e)}
+   if(x.status==200)return advance(js(x));
+   stop();
    if(x.status==409){offset=js(x).offset||0;return send()}
    if(x.status==404){del(key);id=null;offset=0;return start()}
    if(x.status==403)return fail('declined');
    retry(bad(e,x));
-  },offset===0?12000:20000);
+  },from===0?12000:20000,watchServer);
  }
  var saved=get(key);
  if(saved){id=saved;resync()}else start();
