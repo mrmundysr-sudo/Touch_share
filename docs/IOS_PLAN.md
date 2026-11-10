@@ -43,7 +43,12 @@ Goal (owner): an iPhone app that is "as close to exactly the same as the Android
 - The Local Network permission and iOS background limits may force UX changes the Android version does not have.
 - Two copies of the web page HTML (Kotlin `Pages.kt` and its Swift port) can drift; the tests and a shared checklist are the guard.
 
-## Open decisions
-1. Distribution: paid Apple Developer account and TestFlight, or free sideloading, or CI-compile only?
-2. First slice: I0 + I1 (CI-verifiable core) before any UI, as recommended?
-3. Minimum iOS version and iPhone only (no iPad)?
+## Decisions (2026-11-10, D-028)
+1. Distribution: TestFlight (owner's paid Apple Developer account).
+2. First steps: I0 (pipeline) then I1 (Swift core + XCTest), before any UI.
+3. Minimum iOS 15.0, iPhone only (default, can change).
+
+## What the owner needs to do for TestFlight (later, slice I4)
+- Enrol in the Apple Developer Program, register the bundle id `com.touchshare.app` (or another id: say so) and create the app in App Store Connect.
+- Create an App Store Connect API key (Issuer ID, Key ID and the .p8 file) and store them as GitHub repository secrets. Claude will write the workflow that reads them and never sees their values.
+- Answer Apple's export-compliance question (the app uses standard encryption such as HTTPS and WebRTC); this is the owner's declaration, so it is not set in the project yet.

@@ -1,0 +1,41 @@
+# XcodeGen project description (the Xcode project is generated in CI, so the repo stays text-only).
+name: TouchShare
+options:
+  bundleIdPrefix: com.touchshare
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1"          # iPhone only
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  TouchShare:
+    type: application
+    platform: iOS
+    sources: [TouchShare]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.touchshare.app
+    info:
+      path: TouchShare/Info.plist
+      properties:
+        CFBundleDisplayName: Touch Share
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSLocalNetworkUsageDescription: Touch Share shares files with devices on your Wi-Fi or hotspot.
+  TouchShareTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [TouchShareTests]
+    dependencies:
+      - target: TouchShare
+schemes:
+  TouchShare:
+    build:
+      targets:
+        TouchShare: all
+    test:
+      targets: [TouchShareTests]
