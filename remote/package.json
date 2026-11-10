@@ -1,0 +1,11 @@
+{
+  "name": "touch-share-remote",
+  "private": true,
+  "type": "module",
+  "description": "Remote share (beta, no relay): signaling core, Node dev server, shared WebRTC peer script and guest page",
+  "scripts": {
+    "test": "node --test test/core.test.mjs",
+    "serve": "node signaling/server.mjs",
+    "e2e": "node test/e2e.mjs"
+  }
+}

@@ -1,6 +1,6 @@
 # Remote share (beta, no relay): scoped plan
 
-Status: **plan awaiting owner approval; no code written.** Product decision D-009 (approved): optional "from anywhere" beta using WebRTC data channels + STUN + a tiny signaling service, **no TURN relay**, honestly labelled "works on many networks, not all", falls back to the local QR flow. Everything below that is not D-009 is a **proposal**.
+Status: **approved 2026-11-10 (own Cloudflare Worker, hidden WebView, slice 1 first). Slice 1 built and tested (see below); slices 2 to 4 not started.** Product decision D-009 (approved): optional "from anywhere" beta using WebRTC data channels + STUN + a tiny signaling service, **no TURN relay**, honestly labelled "works on many networks, not all", falls back to the local QR flow. Everything below that is not D-009 is a **proposal**.
 
 ## What the user sees
 1. Host taps Send or Receive, then chooses **Same Wi-Fi** (today's flow, unchanged) or **Anywhere (beta)**.
@@ -40,7 +40,10 @@ Status: **plan awaiting owner approval; no code written.** Product decision D-00
 
 Cost: $0 on free tiers (optional domain extra). Main ongoing duty: keep the signaling service up and the privacy note true.
 
-## Open decisions
+## Slice 1 result (2026-11-10)
+Built in `remote/`: matchmaker core (10 unit tests), Node dev server, shared peer script, themed guest page. Verified in two real Chromium pages over loopback: 100 MB transfer intact with bounded send buffer; 20 MB back the other way on the same connection; matching verification numbers; second guest refused; dropped connection reported in 0.5 s instead of hanging; stranger with a wrong secret turned away without bothering the host and the real guest still connects; typed-code guests reach the prompt flagged as typed (or are refused if typed codes are off); no-direct-path fails clearly after the timeout; the page explains each case in plain words. Four real bugs found and fixed by those tests (guest closing deleting the room, denied message lost on reset, message numbers restarting on reset, final state being overwritten). **Not yet proven:** success rates on real networks, iPhone Safari behaviour (a stall like the upload one is possible), and big-file memory limits on iOS.
+
+## Open decisions (resolved 2026-11-10)
 1. Where the signaling service lives: own Cloudflare Worker (recommended), PeerJS Cloud (no account, third-party dependency, bundled TURN to be disabled), or a small Node service on a server the owner already has.
 2. Android peer: hidden WebView running the shared script (recommended) or native WebRTC library (larger APK, separate code to maintain).
 3. Starting point: S1 only (recommended) or S1 to S3 in one go.

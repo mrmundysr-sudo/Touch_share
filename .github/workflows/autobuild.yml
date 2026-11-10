@@ -19,6 +19,8 @@ jobs:
         with: { gradle-version: "8.7" }
       - name: Core tests
         run: gradle :core:test --no-daemon
+      - name: Remote share signaling tests
+        run: node --test remote/test/core.test.mjs
       - name: Debug APK
         run: gradle :app:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4

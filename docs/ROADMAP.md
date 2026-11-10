@@ -14,7 +14,7 @@ Status key: **Done** / **Next** / **Planned** / **Idea**. Update this file whene
 | 0.5 | Auto-stop after idle, handle Android 15 foreground-service timeout, settings toggle for approval | Planned | Moved from 0.3. |
 | 0.5 | "Download all as zip", transfer history screen, choose save folder (SAF) | Planned | |
 | later | HTTPS as an opt-in "Secure mode" with a per-session self-signed cert (browser warning is the cost) | Idea | D-016: plain HTTP on trusted hotspot/Wi-Fi is the supported mode; revisit only if users ask. |
-| 0.6 | **Remote share (beta, no relay)** (plan written: docs/REMOTE_SHARE_PLAN.md, D-018 awaiting approval): WebRTC data channel + STUN + minimal signaling; browser receiver kept; honest labelling, timeout error, fallback to local QR | Planned | D-009. Test on real networks first and record success rates; add privacy policy; short-lived codes + rate limits. No TURN unless re-approved. |
+| 0.6 | **Remote share (beta, no relay)** (plan approved: docs/REMOTE_SHARE_PLAN.md, D-018; **slice 1 done**, slices 2 to 4 next): WebRTC data channel + STUN + minimal signaling; browser receiver kept; honest labelling, timeout error, fallback to local QR | Planned | D-009. Test on real networks first and record success rates; add privacy policy; short-lived codes + rate limits. No TURN unless re-approved. |
 | 1.0 | **Nearby Connections (Google Play Services)**: app-to-app, BLE discovery, auto Wi-Fi/Bluetooth upgrade | Planned | Android only. Biggest UX win, no hotspot setup. |
 | 1.1 | **Wi-Fi Direct** transport | Idea | May be redundant with Nearby; evaluate after 1.0. |
 | 1.2 | **Bluetooth (RFCOMM/BLE) fallback** | Idea | Slow; only for no-Wi-Fi situations. |

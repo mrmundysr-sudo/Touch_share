@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Remote share slice 1 (no app changes): `remote/` folder with the matchmaker core (10 unit tests, now run in CI), Node dev server, shared WebRTC peer script and the themed guest page. Browser-to-browser tests pass (100 MB transfer, dropped connection, stranger rejection, typed code, no-direct-path). Not yet tested on real networks or on iPhone.
 - Added docs/REMOTE_SHARE_PLAN.md (scope, slices, security, feasibility research) and proposal D-018 for the remote share beta. No code yet.
 
 ## 0.4.4 (branch `claude/touch-share-v1`)

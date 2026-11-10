@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Touch Share</title>
+<style>
+:root{--g:#39ff14;--t:#e6fbe3}
+html{background:#05080a}
+body{margin:0;font-family:system-ui,sans-serif;color:var(--t)}
+.page{max-width:520px;margin:0 auto;min-height:100vh;box-sizing:border-box;padding:29% 8% 24%;
+ background:#05080a url(/web_bg.webp) top center/100% auto no-repeat}
+h1{font-size:1.1rem;margin:0 0 10px;color:var(--g);letter-spacing:.05em;text-transform:uppercase}
+p{line-height:1.45;margin:8px 0}
+.beta{display:inline-block;font-size:.7rem;border:1px solid var(--g);color:var(--g);border-radius:8px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.code{font-size:2rem;font-weight:800;letter-spacing:.2em;color:#fff;text-shadow:0 0 12px var(--g)}
+.box{background:rgba(10,60,20,.55);border:1px solid rgba(57,255,20,.45);border-radius:12px;padding:12px 14px;margin:10px 0;word-break:break-word}
+.row{margin:10px 0;font-size:.9rem;word-break:break-word}
+progress{-webkit-appearance:none;appearance:none;width:100%;height:12px;border:0;border-radius:6px;background:#12301a;overflow:hidden;display:block;margin-top:6px}
+progress::-webkit-progress-bar{background:#12301a;border-radius:6px}
+progress::-webkit-progress-value{background:linear-gradient(90deg,#1fb52a,#39ff14);border-radius:6px}
+progress::-moz-progress-bar{background:#39ff14;border-radius:6px}
+button,::file-selector-button,::-webkit-file-upload-button{-webkit-appearance:none;appearance:none}
+button{font-size:1rem;font-weight:700;color:#fff;text-shadow:0 1px 2px #000;padding:12px 18px;margin:8px 8px 8px 0;
+ background:linear-gradient(#35d12f,#0c7a1c);border:2px solid #cfd8d4;border-radius:14px}
+::file-selector-button{font-size:1rem;font-weight:700;color:#fff;padding:12px 18px;margin:8px 12px 8px 0;background:linear-gradient(#35d12f,#0c7a1c);border:2px solid #cfd8d4;border-radius:14px}
+input[type=text]{font-size:1.4rem;letter-spacing:.2em;width:9em;padding:10px;border-radius:10px;border:2px solid #cfd8d4;background:#0b1410;color:#fff}
+input[type=file]{font-size:1rem;color:var(--t);max-width:100%}
+details{margin-top:14px;font-size:.8rem;color:#8fd68a}
+pre{white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto;color:#bfe8bb}
+.hide{display:none}
+a.save{display:inline-block;color:#fff;font-weight:700;text-decoration:none;padding:8px 14px;border:2px solid #cfd8d4;border-radius:12px;background:linear-gradient(#35d12f,#0c7a1c)}
+</style></head>
+<body><div class="page">
+<h1>Touch Share <span class="beta">beta</span></h1>
+
+<div id="enter" class="hide">
+  <p>Type the 6-digit code shown on the other phone.</p>
+  <input id="codeIn" type="text" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="000000">
+  <button id="goBtn">Connect</button>
+</div>
+
+<div id="status" class="box"></div>
+<div id="verify" class="hide box"><p>Check that the other phone shows this number:</p><div class="code" id="vcode"></div></div>
+
+<div id="xfer" class="hide">
+  <p>Send files to the other phone:</p>
+  <input id="pick" type="file" multiple><br>
+  <button id="sendBtn">Send</button>
+  <div id="log"></div>
+</div>
+<div id="incoming"></div>
+
+<details><summary>Details (for troubleshooting)</summary><pre id="dbg"></pre></details>
+</div>
+<script type="module" src="/guest.js"></script>
+</body></html>
