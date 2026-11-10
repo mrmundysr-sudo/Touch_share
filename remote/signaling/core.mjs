@@ -113,6 +113,22 @@ export class SignalingCore {
     return { status: 200, body: { ok: true } };
   }
 
+  // host only: tell the current guest "no" and free the slot in one step, so there is no gap in which the next
+  // (legitimate) guest is told the room is taken. The turned-away guest can still read this one message.
+  deny(code, key, data) {
+    const r = this._room(code);
+    if (!r) return { status: 404, body: { error: 'no such room' } };
+    if (this._role(r, key) !== 'host') return { status: 403, body: { error: 'forbidden' } };
+    if (typeof data !== 'string' || data.length > this.cfg.maxMessageChars) return { status: 413, body: { error: 'message too large' } };
+    if (r.guestKey) {
+      r.boxes.guest.push({ id: r.nextId.guest++, data });
+      r.retired.set(r.guestKey, { box: r.boxes.guest, until: this.now() + 30000 });
+    }
+    r.guestKey = null; r.boxes = { host: [], guest: [] };
+    for (const w of [...r.waiters]) w.wake();
+    return { status: 200, body: { ok: true } };
+  }
+
   // host: remove the room. guest: just leave (free the guest slot) - a guest can never delete the host's room
   close(code, key) {
     const r = this._room(code);

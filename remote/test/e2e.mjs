@@ -8,6 +8,7 @@ const { chromium } = require('playwright');
 
 const { server, port } = await createServer(new SignalingCore({ createPerMinute: 1000, joinFailuresPerMinute: 1000 }));
 const base = `http://127.0.0.1:${port}`;
+const SIGNAL = process.env.E2E_SIGNAL || '';       // set to test a deployed or locally run Worker instead of the Node server
 const browser = await chromium.launch({ args: ['--disable-features=WebRtcHideLocalIpsWithMdns'] });
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra ? '  ' + extra : '')); if (!cond) failures++; };
@@ -25,7 +26,7 @@ const helpers = () => {
   };
 };
 async function openPage() {
-  const ctx = await browser.newContext(); const page = await ctx.newPage();
+  const ctx = await browser.newContext(); await ctx.addInitScript(`window.SIG = ${JSON.stringify(SIGNAL)}`); const page = await ctx.newPage();
   await page.goto(base + '/harness.html'); await page.waitForFunction(() => window.ready);
   await page.evaluate(helpers);
   return page;
@@ -35,7 +36,7 @@ const waitState = (page, who, state, ms = 20000) => page.waitForFunction(([w, s]
 async function makeHost(page, { approve = true, ice = [], extra = {} } = {}) {
   return page.evaluate(async ([approve, ice, extra]) => {
     window.approvals = 0; window.incoming = []; window.rejected = 0;
-    window.host = await P.RemotePeer.host({ signalUrl: '', iceServers: ice, ...extra,
+    window.host = await P.RemotePeer.host({ signalUrl: window.SIG, iceServers: ice, ...extra,
       onApprove: async ({ code }) => { window.approvals++; window.askedCode = code; return approve; },
       onIncoming: async meta => { const s = makeSink(); window.incoming.push({ meta, sink: s }); return s; } });
     window.host.on('rejected', () => window.rejected++);
@@ -44,7 +45,7 @@ async function makeHost(page, { approve = true, ice = [], extra = {} } = {}) {
 }
 async function makeGuest(page, code, secret, { ice = [], extra = {} } = {}) {
   return page.evaluate(async ([code, secret, ice, extra]) => {
-    window.guest = await P.RemotePeer.guest({ signalUrl: '', code, secret, iceServers: ice, onIncoming: async meta => { const s = makeSink(); (window.gotFiles ||= []).push({ meta, sink: s }); return s; }, ...extra });
+    window.guest = await P.RemotePeer.guest({ signalUrl: window.SIG, code, secret, iceServers: ice, onIncoming: async meta => { const s = makeSink(); (window.gotFiles ||= []).push({ meta, sink: s }); return s; }, ...extra });
     return true;
   }, [code, secret, ice, extra]);
 }
@@ -72,7 +73,7 @@ try {
     ok('20 MB host -> guest arrived intact on the same connection', r2.ok && g2.n === 20 * 1024 * 1024 && g2.crc === r2.crc);
     // 3. a second guest cannot take over a busy room
     const g3 = await openPage();
-    const err = await g3.evaluate(async code => { try { await P.RemotePeer.guest({ signalUrl: '', code, iceServers: [] }); return null; } catch (e) { return e.message; } }, code);
+    const err = await g3.evaluate(async code => { try { await P.RemotePeer.guest({ signalUrl: window.SIG, code, iceServers: [] }); return null; } catch (e) { return e.message; } }, code);
     ok('second guest is turned away', err === 'someone else already joined', err);
     await h.context().close(); await g.context().close(); await g3.context().close();
   }

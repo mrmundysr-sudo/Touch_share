@@ -43,6 +43,14 @@ Cost: $0 on free tiers (optional domain extra). Main ongoing duty: keep the sign
 ## Slice 1 result (2026-11-10)
 Built in `remote/`: matchmaker core (10 unit tests), Node dev server, shared peer script, themed guest page. Verified in two real Chromium pages over loopback: 100 MB transfer intact with bounded send buffer; 20 MB back the other way on the same connection; matching verification numbers; second guest refused; dropped connection reported in 0.5 s instead of hanging; stranger with a wrong secret turned away without bothering the host and the real guest still connects; typed-code guests reach the prompt flagged as typed (or are refused if typed codes are off); no-direct-path fails clearly after the timeout; the page explains each case in plain words. Four real bugs found and fixed by those tests (guest closing deleting the room, denied message lost on reset, message numbers restarting on reset, final state being overwritten). **Not yet proven:** success rates on real networks, iPhone Safari behaviour (a stall like the upload one is possible), and big-file memory limits on iOS.
 
+## Slice 2 result (2026-11-10, built, not yet deployed)
+- Cloudflare Worker (`remote/worker`): one Durable Object runs the same matchmaker code and HTTP handler as the Node tests; static assets serve the pages; the QR-style link path `/r/<code>` serves the guest page; the test-only harness page is not published.
+- Verified locally with Cloudflare's own runtime (wrangler dev / workerd): the whole browser-to-browser suite and the page suite pass through the Worker.
+- New **host page** (`/host.html`): QR code, link, 6-digit code, approval pop-up with the verification number (typed-code guests flagged), send/receive, stop. Lets two phones test the real connection with browsers only, before the Android app takes part. Pages now report the connection type (same network, direct across the internet, or relayed).
+- Bugs found by the Worker run and fixed: a legitimate guest arriving just after a stranger was told the room was taken (turn-away is now one atomic step).
+- Deployment is by phone from the Cloudflare dashboard: see `remote/worker/DEPLOY.md`. Owner action needed: create the free Cloudflare account and connect the repository.
+- Not verified: the live deployment, Cloudflare dashboard wording, Workers Builds free-plan limits, and anything on real networks.
+
 ## Open decisions (resolved 2026-11-10)
 1. Where the signaling service lives: own Cloudflare Worker (recommended), PeerJS Cloud (no account, third-party dependency, bundled TURN to be disabled), or a small Node service on a server the owner already has.
 2. Android peer: hidden WebView running the shared script (recommended) or native WebRTC library (larger APK, separate code to maintain).

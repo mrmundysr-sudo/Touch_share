@@ -55,6 +55,7 @@ class Signal {
   async createRoom() { const r = await this._json('POST', '/api/rooms'); if (r.status !== 201) throw new Error('could not start (' + r.status + ')'); this.code = r.body.code; this.key = r.body.hostKey; return r.body; }
   async join(code) { const r = await this._json('POST', `/api/rooms/${code}/join`); if (r.status !== 200) { const e = new Error(r.status === 404 ? 'no such code' : r.status === 409 ? 'someone else already joined' : 'could not join (' + r.status + ')'); e.status = r.status; throw e; } this.code = code; this.key = r.body.guestKey; return r.body; }
   async reset() { return this._json('POST', `/api/rooms/${this.code}/reset`); }
+  async deny(obj) { return this._json('POST', `/api/rooms/${this.code}/deny`, { data: JSON.stringify(obj) }); }   // tell the guest no and free the slot at once
   async send(obj) { return this._json('POST', `/api/rooms/${this.code}/send`, { data: JSON.stringify(obj) }); }
   async close() { this.closed = true; try { this.ctl?.abort(); } catch {} try { await this._json('DELETE', `/api/rooms/${this.code}`, undefined, this.key); } catch {} }
   /** Calls onMsg for every message, in order, until closed. */
@@ -126,8 +127,8 @@ export class RemotePeer extends Emitter {
       if ((!typed && m.proof !== expected) || (typed && this.opts.allowTypedCode === false)) {
         const reason = typed ? 'secret-required' : 'bad-proof';
         this.emit('rejected', { reason });
-        await this.signal.send({ type: 'denied', reason });
-        await this.signal.reset(); this._handling = false; return;
+        await this.signal.deny({ type: 'denied', reason });
+        this._handling = false; return;
       }
       const pc = this._newPc();
       pc.ondatachannel = e => this._wireChannel(e.channel);
@@ -137,9 +138,9 @@ export class RemotePeer extends Emitter {
       this._setState('approving', { code: this.verification });
       const ok = this.opts.onApprove ? await this.opts.onApprove({ code: this.verification, typed }) : false;
       if (!ok) {
-        await this.signal.send({ type: 'denied', reason: 'declined' });
+        await this.signal.deny({ type: 'denied', reason: 'declined' });
         try { pc.close(); } catch {}
-        await this.signal.reset(); this._remoteSet = false; this._queuedIce = []; this._handling = false; this._setState('waiting');
+        this._remoteSet = false; this._queuedIce = []; this._handling = false; this._setState('waiting');
         this.emit('declined', {});
         return;
       }
@@ -204,6 +205,20 @@ export class RemotePeer extends Emitter {
     try { this.pc?.close(); } catch {}
     if (!['failed', 'closed', 'denied'].includes(this.state)) this._setState('closed', { reason: 'closed' });
     this._rejectWaiters(new Error('closed')); this._abortRx();
+  }
+
+  /** What kind of path the connection ended up with: same network, direct across the internet (STUN), or relayed. */
+  async connectionInfo() {
+    if (!this.pc) return null;
+    const stats = await this.pc.getStats(); const by = {}; let pair = null;
+    stats.forEach(r => { by[r.id] = r; });
+    stats.forEach(r => { if (r.type === 'transport' && r.selectedCandidatePairId) pair = by[r.selectedCandidatePairId]; });
+    if (!pair) stats.forEach(r => { if (r.type === 'candidate-pair' && (r.selected || (r.nominated && r.state === 'succeeded'))) pair = r; });
+    if (!pair) return null;
+    const l = by[pair.localCandidateId] || {}, r = by[pair.remoteCandidateId] || {};
+    const types = [l.candidateType, r.candidateType];
+    const kind = types.includes('relay') ? 'relayed' : types.every(t => t === 'host') ? 'same-network' : 'internet-direct';
+    return { kind, local: l.candidateType, remote: r.candidateType, protocol: l.protocol };
   }
 
   _ctl(obj) { this.dc.send(JSON.stringify(obj)); }

@@ -141,3 +141,15 @@ test('message numbers keep counting after a reset so a host cursor never misses 
   assert.ok(second.body.messages[0].id > 2);
 });
 
+test('deny tells the guest no and frees the slot in one step', async () => {
+  const { core } = make();
+  const { code, hostKey } = core.createRoom('h').body;
+  const g1 = core.join(code, 'g1').body.guestKey;
+  assert.equal(core.deny(code, g1, 'x').status, 403);                  // only the host can deny
+  assert.equal(core.deny(code, hostKey, '{"type":"denied"}').status, 200);
+  const g2 = core.join(code, 'g2');                                      // no gap: the next guest gets in immediately
+  assert.equal(g2.status, 200);
+  assert.deepEqual((await core.recv(code, g1, 0, 0)).body.messages.map(m => m.data), ['{"type":"denied"}']);   // old guest hears it
+  assert.equal((await core.recv(code, g2.body.guestKey, 0, 0)).body.messages.length, 0);                        // new guest does not
+});
+
