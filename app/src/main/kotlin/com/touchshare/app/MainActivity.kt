@@ -38,6 +38,8 @@ class MainActivity : Activity() {
     private lateinit var home: ArtLayout
     private lateinit var sending: SessionScreen
     private lateinit var receiving: SessionScreen
+    private lateinit var anywhere: AnywhereScreen
+    private val tick = Runnable { if (SessionHolder.listener != null) render() }
     private var current: View? = null
     private var qrFor: String? = null
     private var qrBitmap: Bitmap? = null
@@ -59,6 +61,7 @@ class MainActivity : Activity() {
         }
         sending = sessionScreen(Art.SENDING)
         receiving = sessionScreen(Art.RECEIVING)
+        anywhere = AnywhereScreen(this) { stopSession() }
 
         container = FrameLayout(this).apply { setBackgroundColor(0xFF05080A.toInt()) }
         setContentView(container, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -110,6 +113,7 @@ class MainActivity : Activity() {
 
     override fun onStop() {
         SessionHolder.listener = null
+        container.removeCallbacks(tick)
         dialog?.dismiss(); dialog = null; dialogFor = null
         promptDialog?.dismiss(); promptDialog = null
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -142,19 +146,24 @@ class MainActivity : Activity() {
         checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
         !prefs.getBoolean("asked_notifications", false)
 
-    /** Temporary plain chooser (themed art for it is still to come): same Wi-Fi, or Anywhere (beta). */
+    /** Temporary plain chooser (themed art for it is still to come): same Wi-Fi, or Anywhere (beta).
+     *  Long-press "Anywhere (beta)" to change the matchmaker address (testing only). */
     private fun startSession(mode: Mode, uris: List<Uri>?) {
-        val items = arrayOf("Same Wi-Fi or hotspot", "Anywhere (beta)", "Anywhere server address\u2026")
-        AlertDialog.Builder(this)
+        val items = arrayOf("Same Wi-Fi or hotspot", "Anywhere (beta)")
+        val dlg = AlertDialog.Builder(this)
             .setTitle(if (mode == Mode.SEND) "Send how?" else "Receive how?")
             .setItems(items) { _, which ->
-                when (which) {
-                    0 -> startAfterChoice(mode, uris, false)
-                    1 -> if (RemoteConfig.serverUrl(this) == null) askServerAddress { startAfterChoice(mode, uris, true) } else startAfterChoice(mode, uris, true)
-                    2 -> askServerAddress { startSession(mode, uris) }
-                }
+                if (which == 0) startAfterChoice(mode, uris, false)
+                else if (RemoteConfig.serverUrl(this) == null) askServerAddress { startAfterChoice(mode, uris, true) }
+                else startAfterChoice(mode, uris, true)
             }
-            .show()
+            .create()
+        dlg.setOnShowListener {
+            dlg.listView.setOnItemLongClickListener { _, _, pos, _ ->
+                if (pos == 1) { dlg.dismiss(); askServerAddress { startSession(mode, uris) }; true } else false
+            }
+        }
+        dlg.show()
     }
 
     /** Asks for the matchmaker address once; fills it in from the clipboard if a web address was just copied. */
@@ -209,15 +218,20 @@ class MainActivity : Activity() {
 
     private fun render() {
         val active = SessionHolder.active
-        val screen = if (active) (if (SessionHolder.mode == Mode.SEND) sending else receiving) else null
-        val target: View = screen?.layout ?: home
+        val remote = active && SessionHolder.remote
+        val screen = if (active && !remote) (if (SessionHolder.mode == Mode.SEND) sending else receiving) else null
+        val target: View = if (remote) anywhere.view else screen?.layout ?: home
         if (current !== target) { container.removeAllViews(); container.addView(target); current = target }
 
         val url = SessionHolder.url
-        if (screen != null && url != null) {
+        container.removeCallbacks(tick)
+        if (remote) {
+            if (anywhere.update()) container.postDelayed(tick, 15_000)      // keep the countdown fresh while waiting
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else if (screen != null && url != null) {
             if (qrFor != url) { qrBitmap = Qr.bitmap(url); qrFor = url }
             screen.qr.setImageBitmap(qrBitmap)
-            screen.link.text = if (SessionHolder.remote) "Code ${SessionHolder.remoteCode} (tap to copy link)" else url
+            screen.link.text = url
             screen.line.text = SessionHolder.logLines().firstOrNull() ?: "Waiting for the other phone…"
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {

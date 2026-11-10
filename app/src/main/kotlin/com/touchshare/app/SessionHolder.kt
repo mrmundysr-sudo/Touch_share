@@ -3,6 +3,7 @@ package com.touchshare.app
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import com.touchshare.core.Device
 import com.touchshare.core.DeviceRegistry
 import com.touchshare.core.Mode
@@ -24,6 +25,9 @@ object SessionHolder {
     var registry: DeviceRegistry? = null; private set
     var remote = false; private set                 // an "Anywhere" session (hidden WebView) instead of a local server
     var remoteCode: String? = null; private set
+    var remoteConnected = false; private set        // the other person is connected (the 10-minute invitation no longer matters)
+    var remoteStartedAt = 0L; private set           // SystemClock.elapsedRealtime() when the invitation was made
+    var remoteFiles = 0; private set                // files being shared (Send mode)
     private var remoteDecider: ((Boolean) -> Unit)? = null
     private val log = ArrayDeque<String>()
     private val pending = LinkedHashMap<String, Device>()
@@ -36,13 +40,15 @@ object SessionHolder {
         active = true; mode = m; url = u; registry = r; error = null; log.clear(); pending.clear(); changed()
     }
 
-    @Synchronized fun beginRemote(m: Mode, link: String, code: String, decider: (Boolean) -> Unit) {
+    @Synchronized fun beginRemote(m: Mode, link: String, code: String, files: Int, decider: (Boolean) -> Unit) {
         active = true; mode = m; url = link; registry = null; remote = true; remoteCode = code; remoteDecider = decider
+        remoteConnected = false; remoteStartedAt = SystemClock.elapsedRealtime(); remoteFiles = files
         error = null; log.clear(); pending.clear(); changed()
     }
 
     @Synchronized fun end() {
         active = false; mode = null; url = null; registry = null; remote = false; remoteCode = null; remoteDecider = null
+        remoteConnected = false; remoteFiles = 0
         log.clear(); pending.clear(); changed()
     }
 
@@ -52,6 +58,8 @@ object SessionHolder {
         val r = registry ?: return
         if (allow) r.allow(id) else r.deny(id)
     }
+
+    @Synchronized fun setRemoteConnected(connected: Boolean) { remoteConnected = connected; changed() }
 
     @Synchronized fun fail(msg: String) { error = msg; changed() }
     private var progressKey: String? = null

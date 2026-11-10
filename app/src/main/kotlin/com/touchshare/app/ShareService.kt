@@ -94,7 +94,7 @@ class ShareService : Service() {
         lateinit var host: RemoteHost
         host = RemoteHost(applicationContext, object : RemoteHost.Listener {
             override fun onRoom(code: String, secret: String, link: String) {
-                SessionHolder.beginRemote(mode, link, code) { ok ->
+                SessionHolder.beginRemote(mode, link, code, uris?.size ?: 0) { ok ->
                     SessionHolder.removePending(SessionHolder.REMOTE_ID); cancel(approvalId(SessionHolder.REMOTE_ID))
                     SessionHolder.addLog(if (ok) "Allowed. Connecting…" else "Denied.")
                     host.decide(ok)
@@ -104,11 +104,12 @@ class ShareService : Service() {
             override fun onState(state: String, reason: String?, code: String?) {
                 when (state) {
                     "connecting" -> SessionHolder.addLog("Making a direct connection…")
+                    "connected" -> SessionHolder.setRemoteConnected(true)
                     "failed" -> {
                         SessionHolder.addLog("Couldn't connect directly.")
                         SessionHolder.fail("Couldn't connect directly. This can happen on some networks. Try the same Wi-Fi or hotspot.")
                     }
-                    "closed" -> if (reason != "closed") SessionHolder.addLog("The connection was lost.")
+                    "closed" -> { SessionHolder.setRemoteConnected(false); if (reason != "closed") SessionHolder.addLog("The connection was lost.") }
                 }
             }
             override fun onApprove(code: String, typed: Boolean) {
